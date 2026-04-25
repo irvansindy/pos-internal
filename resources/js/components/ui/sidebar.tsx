@@ -235,7 +235,7 @@ function TeamSwitcher() {
                                 key={team.id}
                                 onClick={() => {
                                     setOpen(false);
-                                    router.post(route('teams.switch', { team: team.slug }));
+                                    router.post(route('current-team.switch', { team: team.slug }));
                                 }}
                                 style={{
                                     width: '100%', display: 'flex', alignItems: 'center', gap: '10px',

@@ -15,9 +15,7 @@ class LoginResponse implements LoginResponseContract
         $user = $request->user();
         $team = $user?->currentTeam ?? $user?->personalTeam();
 
-        if (! $team) {
-            abort(403);
-        }
+        if (! $team) { $team = $this->createPersonalTeam($user); }
 
         URL::defaults(['current_team' => $team->slug]);
 
