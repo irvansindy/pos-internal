@@ -1,719 +1,386 @@
-import { Slot } from "@radix-ui/react-slot"
-import type { VariantProps} from "class-variance-authority";
-import { cva } from "class-variance-authority"
-import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react"
-import * as React from "react"
-
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
+import { Link, usePage, router } from '@inertiajs/react';
+import { useState } from 'react';
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
-import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { useIsMobile } from "@/hooks/use-mobile"
-import { cn } from "@/lib/utils"
+    ShoppingCart, Store, User, LogOut, ChevronsUpDown, Check,
+    ChevronDown, ChevronRight, LayoutDashboard, Users, Package,
+    Receipt, BarChart2, Settings,
+} from 'lucide-react';
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state"
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem"
-const SIDEBAR_WIDTH_MOBILE = "18rem"
-const SIDEBAR_WIDTH_ICON = "3rem"
-const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+// Ziggy - sudah global via Laravel starter kit
+declare function route(name: string, params?: Record<string, unknown>): string;
 
-type SidebarContext = {
-  state: "expanded" | "collapsed"
-  open: boolean
-  setOpen: (open: boolean) => void
-  openMobile: boolean
-  setOpenMobile: (open: boolean) => void
-  isMobile: boolean
-  toggleSidebar: () => void
+const iconMap: Record<string, React.ElementType> = {
+    LayoutDashboard, Users, Package, ShoppingCart, Receipt,
+    BarChart2, Settings, Store, User,
+};
+
+interface NavChild {
+    name: string;
+    label: string;
+    route: string;
+    icon?: string;
 }
 
-const SidebarContext = React.createContext<SidebarContext | null>(null)
-
-function useSidebar() {
-  const context = React.useContext(SidebarContext)
-  if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider.")
-  }
-
-  return context
+interface NavItem {
+    name: string;
+    label: string;
+    route: string | null;
+    icon: string;
+    module: string | null;
+    children: NavChild[];
 }
 
-function SidebarProvider({
-  defaultOpen = true,
-  open: openProp,
-  onOpenChange: setOpenProp,
-  className,
-  style,
-  children,
-  ...props
-}: React.ComponentProps<"div"> & {
-  defaultOpen?: boolean
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-}) {
-  const isMobile = useIsMobile()
-  const [openMobile, setOpenMobile] = React.useState(false)
+// ─── NavLink ─────────────────────────────────────────────
+function NavLink({ item, currentUrl }: { item: NavChild; currentUrl: string }) {
+    const Icon = iconMap[item.icon ?? ''];
+    // Deteksi active berdasarkan nama route (lebih reliable)
+    const isActive = currentUrl.includes(item.route?.replace('.', '/').replace('.', '/') ?? '__never__');
 
-  // This is the internal state of the sidebar.
-  // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(defaultOpen)
-  const open = openProp ?? _open
-  const setOpen = React.useCallback(
-    (value: boolean | ((value: boolean) => boolean)) => {
-      const openState = typeof value === "function" ? value(open) : value
-      if (setOpenProp) {
-        setOpenProp(openState)
-      } else {
-        _setOpen(openState)
-      }
+    const base: React.CSSProperties = {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        borderRadius: '8px',
+        padding: '7px 12px',
+        fontSize: '14px',
+        textDecoration: 'none',
+        transition: 'all 0.15s',
+        cursor: 'pointer',
+    };
 
-      // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
-    },
-    [setOpenProp, open]
-  )
+    const active: React.CSSProperties = {
+        ...base,
+        backgroundColor: 'var(--color-background-info)',
+        color: 'var(--color-text-info)',
+        fontWeight: 500,
+    };
 
-  // Helper to toggle the sidebar.
-  const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
-  }, [isMobile, setOpen, setOpenMobile])
+    const inactive: React.CSSProperties = {
+        ...base,
+        color: 'var(--color-text-secondary)',
+        fontWeight: 400,
+    };
 
-  // Adds a keyboard shortcut to toggle the sidebar.
-  React.useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
-        (event.metaKey || event.ctrlKey)
-      ) {
-        event.preventDefault()
-        toggleSidebar()
-      }
+    return (
+        <Link
+            href={route(item.route)}
+            style={isActive ? active : inactive}
+            onMouseEnter={e => {
+                if (!isActive) {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.backgroundColor = 'var(--color-background-secondary)';
+                    el.style.color = 'var(--color-text-primary)';
+                }
+            }}
+            onMouseLeave={e => {
+                if (!isActive) {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.backgroundColor = 'transparent';
+                    el.style.color = 'var(--color-text-secondary)';
+                }
+            }}
+        >
+            {Icon && <Icon size={15} style={{ opacity: 0.7, flexShrink: 0 }} />}
+            <span>{item.label}</span>
+        </Link>
+    );
+}
+
+// ─── NavGroup ────────────────────────────────────────────
+function NavGroup({ item, currentUrl }: { item: NavItem; currentUrl: string }) {
+    const Icon = iconMap[item.icon];
+    const hasActiveChild = item.children.some(c =>
+        currentUrl.includes(c.route?.replace('.', '/').replace('.', '/') ?? '__never__')
+    );
+    const [open, setOpen] = useState(hasActiveChild);
+
+    if (item.children.length === 0 && item.route) {
+        return (
+            <NavLink
+                item={{ name: item.name, label: item.label, route: item.route, icon: item.icon }}
+                currentUrl={currentUrl}
+            />
+        );
     }
 
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [toggleSidebar])
-
-  // We add a state so that we can do data-state="expanded" or "collapsed".
-  // This makes it easier to style the sidebar with Tailwind classes.
-  const state = open ? "expanded" : "collapsed"
-
-  const contextValue = React.useMemo<SidebarContext>(
-    () => ({
-      state,
-      open,
-      setOpen,
-      isMobile,
-      openMobile,
-      setOpenMobile,
-      toggleSidebar,
-    }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
-  )
-
-  return (
-    <SidebarContext.Provider value={contextValue}>
-      <div
-        data-slot="sidebar-wrapper"
-        style={
-          {
-            "--sidebar-width": SIDEBAR_WIDTH,
-            "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-            ...style,
-          } as React.CSSProperties
-        }
-        className={cn(
-          "group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full",
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </div>
-    </SidebarContext.Provider>
-  )
-}
-
-function Sidebar({
-  side = "left",
-  variant = "sidebar",
-  collapsible = "offcanvas",
-  className,
-  children,
-  ...props
-}: React.ComponentProps<"div"> & {
-  side?: "left" | "right"
-  variant?: "sidebar" | "floating" | "inset"
-  collapsible?: "offcanvas" | "icon" | "none"
-}) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
-
-  if (collapsible === "none") {
     return (
-      <div
-        data-slot="sidebar"
-        className={cn(
-          "bg-sidebar text-sidebar-foreground flex h-full w-(--sidebar-width) flex-col",
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </div>
-    )
-  }
+        <div>
+            <button
+                onClick={() => setOpen(o => !o)}
+                style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '10px',
+                    borderRadius: '8px',
+                    padding: '7px 12px',
+                    fontSize: '14px',
+                    color: hasActiveChild ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                    fontWeight: hasActiveChild ? 500 : 400,
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-background-secondary)')}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {Icon && <Icon size={15} style={{ opacity: 0.7, flexShrink: 0 }} />}
+                    {item.label}
+                </span>
+                {open
+                    ? <ChevronDown size={13} style={{ opacity: 0.5 }} />
+                    : <ChevronRight size={13} style={{ opacity: 0.5 }} />
+                }
+            </button>
 
-  if (isMobile) {
-    return (
-      <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
-        <SheetHeader className="sr-only">
-          <SheetTitle>Sidebar</SheetTitle>
-          <SheetDescription>Displays the mobile sidebar.</SheetDescription>
-        </SheetHeader>
-        <SheetContent
-          data-sidebar="sidebar"
-          data-slot="sidebar"
-          data-mobile="true"
-          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-            } as React.CSSProperties
-          }
-          side={side}
-        >
-          <div className="flex h-full w-full flex-col">{children}</div>
-        </SheetContent>
-      </Sheet>
-    )
-  }
-
-  return (
-    <div
-      className="group peer text-sidebar-foreground hidden md:block"
-      data-state={state}
-      data-collapsible={state === "collapsed" ? collapsible : ""}
-      data-variant={variant}
-      data-side={side}
-      data-slot="sidebar"
-    >
-      {/* This is what handles the sidebar gap on desktop */}
-      <div
-        className={cn(
-          "relative h-svh w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
-          "group-data-[collapsible=offcanvas]:w-0",
-          "group-data-[side=right]:rotate-180",
-          variant === "floating" || variant === "inset"
-            ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)"
-        )}
-      />
-      <div
-        className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex",
-          side === "left"
-            ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
-            : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-          // Adjust the padding for floating and inset variants.
-          variant === "floating" || variant === "inset"
-            ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
-          className
-        )}
-        {...props}
-      >
-        <div
-          data-sidebar="sidebar"
-          className="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
-        >
-          {children}
+            {open && (
+                <div style={{
+                    marginTop: '2px',
+                    marginLeft: '16px',
+                    paddingLeft: '12px',
+                    borderLeft: '1px solid var(--color-border-tertiary)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px',
+                }}>
+                    {item.children.map(child => (
+                        <NavLink key={child.name} item={child} currentUrl={currentUrl} />
+                    ))}
+                </div>
+            )}
         </div>
-      </div>
-    </div>
-  )
+    );
 }
 
-function SidebarTrigger({
-  className,
-  onClick,
-  ...props
-}: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar, isMobile, state } = useSidebar()
+// ─── TeamSwitcher ────────────────────────────────────────
+function TeamSwitcher() {
+    const { auth } = usePage().props as any;
+    const [open, setOpen] = useState(false);
+    const teams = (auth?.user?.teams ?? []) as Array<{
+        id: number; name: string; slug: string;
+        role_label: string | null; is_current: boolean;
+    }>;
+    const current = auth?.user?.current_team;
 
-  return (
-    <Button
-      data-sidebar="trigger"
-      data-slot="sidebar-trigger"
-      variant="ghost"
-      size="icon"
-      className={cn("h-7 w-7", className)}
-      onClick={(event) => {
-        onClick?.(event)
-        toggleSidebar()
-      }}
-      {...props}
-    >
-      {isMobile || state === "collapsed" ? <PanelLeftOpenIcon /> : <PanelLeftCloseIcon />}
-      <span className="sr-only">Toggle sidebar</span>
-    </Button>
-  )
+    if (teams.length <= 1) return null;
+
+    return (
+        <div style={{ position: 'relative' }}>
+            <button
+                onClick={() => setOpen(o => !o)}
+                style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                    borderRadius: '8px', padding: '7px 12px',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    transition: 'background-color 0.15s', textAlign: 'left',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-background-secondary)')}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+                {/* Team icon */}
+                <div style={{
+                    height: '28px', width: '28px', borderRadius: '8px',
+                    backgroundColor: 'var(--color-background-info)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                    <Store size={14} style={{ color: 'var(--color-text-info)' }} />
+                </div>
+                {/* Team info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                        fontSize: '14px', fontWeight: 500,
+                        color: 'var(--color-text-primary)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                        {current?.name ?? 'Pilih Tim'}
+                    </div>
+                    <div style={{
+                        fontSize: '12px', color: 'var(--color-text-tertiary)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                        {current?.role_label ?? ''}
+                    </div>
+                </div>
+                <ChevronsUpDown size={13} style={{ color: 'var(--color-text-tertiary)', flexShrink: 0 }} />
+            </button>
+
+            {open && (
+                <>
+                    <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 10 }}
+                        onClick={() => setOpen(false)}
+                    />
+                    <div style={{
+                        position: 'absolute', left: 0, top: '100%', marginTop: '4px',
+                        width: '224px', zIndex: 20, borderRadius: '12px',
+                        border: '1px solid var(--color-border-tertiary)',
+                        backgroundColor: 'var(--color-background-primary)',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                        overflow: 'hidden',
+                    }}>
+                        <div style={{ padding: '10px 12px 6px' }}>
+                            <p style={{
+                                fontSize: '11px', color: 'var(--color-text-tertiary)',
+                                fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em',
+                                margin: 0,
+                            }}>
+                                Pilih Tim
+                            </p>
+                        </div>
+                        {teams.map(team => (
+                            <button
+                                key={team.id}
+                                onClick={() => {
+                                    setOpen(false);
+                                    router.post(route('teams.switch', { team: team.slug }));
+                                }}
+                                style={{
+                                    width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                                    padding: '8px 12px', fontSize: '14px',
+                                    background: 'none', border: 'none', cursor: 'pointer',
+                                    transition: 'background-color 0.15s', textAlign: 'left',
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--color-background-secondary)')}
+                                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                            >
+                                <div style={{
+                                    height: '24px', width: '24px', borderRadius: '6px',
+                                    backgroundColor: 'var(--color-background-secondary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                }}>
+                                    <Store size={12} style={{ color: 'var(--color-text-secondary)' }} />
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{
+                                        fontWeight: 500, color: 'var(--color-text-primary)',
+                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                    }}>
+                                        {team.name}
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)' }}>
+                                        {team.role_label}
+                                    </div>
+                                </div>
+                                {team.is_current && (
+                                    <Check size={13} style={{ color: 'var(--color-text-info)', flexShrink: 0 }} />
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </>
+            )}
+        </div>
+    );
 }
 
-function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
-  const { toggleSidebar } = useSidebar()
+// ─── Main Sidebar ────────────────────────────────────────
+export default function Sidebar() {
+    const { auth, navigation, url } = usePage().props as any;
+    const navItems: NavItem[] = navigation ?? [];
+    const currentUrl: string = url ?? '';
 
-  return (
-    <button
-      data-sidebar="rail"
-      data-slot="sidebar-rail"
-      aria-label="Toggle sidebar"
-      tabIndex={-1}
-      onClick={toggleSidebar}
-      title="Toggle sidebar"
-      className={cn(
-        "hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
-        "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
-        "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
-        "hover:group-data-[collapsible=offcanvas]:bg-sidebar group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full",
-        "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
-        "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
-        className
-      )}
-      {...props}
-    />
-  )
-}
+    return (
+        <aside style={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            width: '256px',
+            flexShrink: 0,
+            borderRight: '1px solid var(--color-border-tertiary)',
+            backgroundColor: 'var(--color-background-primary)',
+        }}>
+            {/* Logo */}
+            <div style={{ padding: '16px', borderBottom: '1px solid var(--color-border-tertiary)' }}>
+                <Link
+                    href={route('dashboard')}
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}
+                >
+                    <div style={{
+                        height: '32px', width: '32px', borderRadius: '8px',
+                        backgroundColor: 'var(--color-text-primary)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                        <ShoppingCart size={16} style={{ color: 'var(--color-background-primary)' }} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                            POS System
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)' }}>
+                            Point of Sale
+                        </div>
+                    </div>
+                </Link>
+            </div>
 
-function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
-  return (
-    <main
-      data-slot="sidebar-inset"
-      className={cn(
-        "bg-background relative flex max-w-full min-h-svh flex-1 flex-col",
-        "peer-data-[variant=inset]:min-h-[calc(100svh-(--spacing(4)))] md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-0",
-        className
-      )}
-      {...props}
-    />
-  )
-}
+            {/* Team Switcher */}
+            <div style={{ padding: '12px 8px 4px' }}>
+                <TeamSwitcher />
+            </div>
 
-function SidebarInput({
-  className,
-  ...props
-}: React.ComponentProps<typeof Input>) {
-  return (
-    <Input
-      data-slot="sidebar-input"
-      data-sidebar="input"
-      className={cn("bg-background h-8 w-full shadow-none", className)}
-      {...props}
-    />
-  )
-}
+            {/* Navigation */}
+            <nav style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px',
+            }}>
+                {navItems.map(item => (
+                    <NavGroup key={item.name} item={item} currentUrl={currentUrl} />
+                ))}
+            </nav>
 
-function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="sidebar-header"
-      data-sidebar="header"
-      className={cn("flex flex-col gap-2 p-2", className)}
-      {...props}
-    />
-  )
-}
-
-function SidebarFooter({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="sidebar-footer"
-      data-sidebar="footer"
-      className={cn("flex flex-col gap-2 p-2", className)}
-      {...props}
-    />
-  )
-}
-
-function SidebarSeparator({
-  className,
-  ...props
-}: React.ComponentProps<typeof Separator>) {
-  return (
-    <Separator
-      data-slot="sidebar-separator"
-      data-sidebar="separator"
-      className={cn("bg-sidebar-border mx-2 w-auto", className)}
-      {...props}
-    />
-  )
-}
-
-function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="sidebar-content"
-      data-sidebar="content"
-      className={cn(
-        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function SidebarGroup({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="sidebar-group"
-      data-sidebar="group"
-      className={cn("relative flex w-full min-w-0 flex-col p-2", className)}
-      {...props}
-    />
-  )
-}
-
-function SidebarGroupLabel({
-  className,
-  asChild = false,
-  ...props
-}: React.ComponentProps<"div"> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot : "div"
-
-  return (
-    <Comp
-      data-slot="sidebar-group-label"
-      data-sidebar="group-label"
-      className={cn(
-        "text-sidebar-foreground/70 ring-sidebar-ring flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium outline-hidden transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
-        "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:select-none group-data-[collapsible=icon]:pointer-events-none",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function SidebarGroupAction({
-  className,
-  asChild = false,
-  ...props
-}: React.ComponentProps<"button"> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot : "button"
-
-  return (
-    <Comp
-      data-slot="sidebar-group-action"
-      data-sidebar="group-action"
-      className={cn(
-        "text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-transform focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
-        // Increases the hit area of the button on mobile.
-        "after:absolute after:-inset-2 md:after:hidden",
-        "group-data-[collapsible=icon]:hidden",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function SidebarGroupContent({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="sidebar-group-content"
-      data-sidebar="group-content"
-      className={cn("w-full text-sm", className)}
-      {...props}
-    />
-  )
-}
-
-function SidebarMenu({ className, ...props }: React.ComponentProps<"ul">) {
-  return (
-    <ul
-      data-slot="sidebar-menu"
-      data-sidebar="menu"
-      className={cn("flex w-full min-w-0 flex-col gap-1", className)}
-      {...props}
-    />
-  )
-}
-
-function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
-  return (
-    <li
-      data-slot="sidebar-menu-item"
-      data-sidebar="menu-item"
-      className={cn("group/menu-item relative", className)}
-      {...props}
-    />
-  )
-}
-
-const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
-  {
-    variants: {
-      variant: {
-        default: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        outline:
-          "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
-      },
-      size: {
-        default: "h-8 text-sm",
-        sm: "h-7 text-xs",
-        lg: "h-12 text-sm group-data-[collapsible=icon]:p-0!",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-)
-
-function SidebarMenuButton({
-  asChild = false,
-  isActive = false,
-  variant = "default",
-  size = "default",
-  tooltip,
-  className,
-  ...props
-}: React.ComponentProps<"button"> & {
-  asChild?: boolean
-  isActive?: boolean
-  tooltip?: string | React.ComponentProps<typeof TooltipContent>
-} & VariantProps<typeof sidebarMenuButtonVariants>) {
-  const Comp = asChild ? Slot : "button"
-  const { isMobile, state } = useSidebar()
-
-  const button = (
-    <Comp
-      data-slot="sidebar-menu-button"
-      data-sidebar="menu-button"
-      data-size={size}
-      data-active={isActive}
-      className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-      {...props}
-    />
-  )
-
-  if (!tooltip) {
-    return button
-  }
-
-  if (typeof tooltip === "string") {
-    tooltip = {
-      children: tooltip,
-    }
-  }
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent
-        side="right"
-        align="center"
-        hidden={state !== "collapsed" || isMobile}
-        {...tooltip}
-      />
-    </Tooltip>
-  )
-}
-
-function SidebarMenuAction({
-  className,
-  asChild = false,
-  showOnHover = false,
-  ...props
-}: React.ComponentProps<"button"> & {
-  asChild?: boolean
-  showOnHover?: boolean
-}) {
-  const Comp = asChild ? Slot : "button"
-
-  return (
-    <Comp
-      data-slot="sidebar-menu-action"
-      data-sidebar="menu-action"
-      className={cn(
-        "text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground peer-hover/menu-button:text-sidebar-accent-foreground absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-transform focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
-        // Increases the hit area of the button on mobile.
-        "after:absolute after:-inset-2 md:after:hidden",
-        "peer-data-[size=sm]/menu-button:top-1",
-        "peer-data-[size=default]/menu-button:top-1.5",
-        "peer-data-[size=lg]/menu-button:top-2.5",
-        "group-data-[collapsible=icon]:hidden",
-        showOnHover &&
-          "peer-data-[active=true]/menu-button:text-sidebar-accent-foreground group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function SidebarMenuBadge({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="sidebar-menu-badge"
-      data-sidebar="menu-badge"
-      className={cn(
-        "text-sidebar-foreground pointer-events-none absolute right-1 flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-xs font-medium tabular-nums select-none",
-        "peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[active=true]/menu-button:text-sidebar-accent-foreground",
-        "peer-data-[size=sm]/menu-button:top-1",
-        "peer-data-[size=default]/menu-button:top-1.5",
-        "peer-data-[size=lg]/menu-button:top-2.5",
-        "group-data-[collapsible=icon]:hidden",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function SidebarMenuSkeleton({
-  className,
-  showIcon = false,
-  ...props
-}: React.ComponentProps<"div"> & {
-  showIcon?: boolean
-}) {
-
-  // wrapping in useState to ensure the width is stable across renders
-  // also ensures we have a stable reference to the style object
-  const [skeletonStyle] = React.useState(() => (
-      {
-        "--skeleton-width": `${Math.floor(Math.random() * 40) + 50}%` // Random width between 50 to 90%.
-    } as React.CSSProperties
-  ))
-
-  return (
-    <div
-      data-slot="sidebar-menu-skeleton"
-      data-sidebar="menu-skeleton"
-      className={cn("flex h-8 items-center gap-2 rounded-md px-2", className)}
-      {...props}
-    >
-      {showIcon && (
-        <Skeleton
-          className="size-4 rounded-md"
-          data-sidebar="menu-skeleton-icon"
-        />
-      )}
-      <Skeleton
-        className="h-4 max-w-(--skeleton-width) flex-1"
-        data-sidebar="menu-skeleton-text"
-        style={skeletonStyle}
-      />
-    </div>
-  )
-}
-
-function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
-  return (
-    <ul
-      data-slot="sidebar-menu-sub"
-      data-sidebar="menu-sub"
-      className={cn(
-        "border-sidebar-border mx-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l px-2.5 py-0.5",
-        "group-data-[collapsible=icon]:hidden",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function SidebarMenuSubItem({
-  className,
-  ...props
-}: React.ComponentProps<"li">) {
-  return (
-    <li
-      data-slot="sidebar-menu-sub-item"
-      data-sidebar="menu-sub-item"
-      className={cn("group/menu-sub-item relative", className)}
-      {...props}
-    />
-  )
-}
-
-function SidebarMenuSubButton({
-  asChild = false,
-  size = "md",
-  isActive = false,
-  className,
-  ...props
-}: React.ComponentProps<"a"> & {
-  asChild?: boolean
-  size?: "sm" | "md"
-  isActive?: boolean
-}) {
-  const Comp = asChild ? Slot : "a"
-
-  return (
-    <Comp
-      data-slot="sidebar-menu-sub-button"
-      data-sidebar="menu-sub-button"
-      data-size={size}
-      data-active={isActive}
-      className={cn(
-        "text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:bg-sidebar-accent active:text-sidebar-accent-foreground [&>svg]:text-sidebar-accent-foreground flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 outline-hidden focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
-        "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
-        size === "sm" && "text-xs",
-        size === "md" && "text-sm",
-        "group-data-[collapsible=icon]:hidden",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-export {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupAction,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarInput,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuAction,
-  SidebarMenuBadge,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSkeleton,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarProvider,
-  SidebarRail,
-  SidebarSeparator,
-  SidebarTrigger,
-  useSidebar,
+            {/* User Profile */}
+            <div style={{ padding: '8px', borderTop: '1px solid var(--color-border-tertiary)' }}>
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '8px 12px',
+                }}>
+                    <div style={{
+                        height: '28px', width: '28px', borderRadius: '50%',
+                        backgroundColor: 'var(--color-background-secondary)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    }}>
+                        <User size={14} style={{ color: 'var(--color-text-secondary)' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                            fontSize: '14px', fontWeight: 500,
+                            color: 'var(--color-text-primary)',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                            {auth?.user?.name}
+                        </div>
+                        <div style={{
+                            fontSize: '12px', color: 'var(--color-text-tertiary)',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                            {auth?.user?.email}
+                        </div>
+                    </div>
+                    <Link
+                        href={route('logout')}
+                        method="post"
+                        as="button"
+                        style={{
+                            color: 'var(--color-text-tertiary)',
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            padding: '4px', borderRadius: '6px', transition: 'color 0.15s',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                        onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = 'var(--color-text-danger)')}
+                        onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = 'var(--color-text-tertiary)')}
+                        title="Logout"
+                    >
+                        <LogOut size={14} />
+                    </Link>
+                </div>
+            </div>
+        </aside>
+    );
 }
