@@ -18,9 +18,7 @@ class DashboardController extends Controller
         if ($team) {
             setPermissionsTeamId($team->id);
 
-            // Only show stats user has permission to see
             if ($user->canOnCurrentTeam('transaction.view')) {
-                // TODO: Replace with actual Transaction model queries scoped to team
                 $stats['transactions_today'] = 0;
                 $stats['revenue_today'] = 0;
                 $stats['transactions_month'] = 0;
@@ -37,8 +35,10 @@ class DashboardController extends Controller
             }
         }
 
-        return Inertia::render('Dashboard', [
-            'stats' => $stats,
+        // Gunakan lowercase 'dashboard' — sesuai convention Laravel starter kit
+        // File: resources/js/pages/dashboard.tsx
+        return Inertia::render('dashboard', [
+            'stats'   => $stats,
             'isOwner' => $team ? $user->ownsTeam($team) : false,
         ]);
     }

@@ -7,19 +7,22 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * SetTeamUrlDefaults
+ *
+ * Set default URL parameter `current_team` untuk semua route generation.
+ * Harus dijalankan di web middleware group agar URL::defaults aktif
+ * sebelum middleware lain (termasuk RedirectIfAuthenticated) generate URL.
+ */
 class SetTeamUrlDefaults
 {
-    /**
-     * Set the default URL parameters for team-based routes.
-     *
-     * @param  Closure(Request): (Response)  $next
-     */
     public function handle(Request $request, Closure $next): Response
     {
-        if ($currentTeam = $request->user()?->currentTeam) {
+        $user = $request->user();
+
+        if ($user?->currentTeam) {
             URL::defaults([
-                'current_team' => $currentTeam->slug,
-                'team' => $currentTeam->slug,
+                'current_team' => $user->currentTeam->slug,
             ]);
         }
 

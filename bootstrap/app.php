@@ -2,7 +2,9 @@
 
 use App\Http\Middleware\EnsureTeamPermission;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\SetTeamContext;
+use App\Http\Middleware\SetTeamUrlDefaults;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,23 +16,33 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        /**
+         * Append ke web group — JANGAN pakai ->group('web', [...])
+         * karena itu menimpa seluruh default middleware.
+         *
+         * Order penting:
+         * 1. SetTeamUrlDefaults — set URL::defaults(['current_team' => ...])
+         *    harus sebelum middleware lain yang bisa generate URL (termasuk guest)
+         * 2. HandleInertiaRequests — share props ke semua Inertia responses
+         */
         $middleware->web(append: [
+            SetTeamUrlDefaults::class,
             HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
-        // Named middleware for use in routes
+        /**
+         * Override RedirectIfAuthenticated (middleware 'guest') bawaan Laravel.
+         * Default-nya pakai route('dashboard') yang butuh {current_team}.
+         * Versi kita pakai URL absolut /{team-slug}/dashboard.
+         */
         $middleware->alias([
-            'team.context' => SetTeamContext::class,
-            'team.permission' => EnsureTeamPermission::class,
-            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'guest'              => RedirectIfAuthenticated::class,
+            'team.context'       => SetTeamContext::class,
+            'team.permission'    => EnsureTeamPermission::class,
+            'role'               => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission'         => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-        ]);
-
-        // Apply team context globally for authenticated routes
-        $middleware->group('web', [
-            // ... default web middleware
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
