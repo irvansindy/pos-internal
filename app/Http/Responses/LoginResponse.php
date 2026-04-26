@@ -5,7 +5,7 @@ namespace App\Http\Responses;
 use App\Enums\TeamRole;
 use App\Models\Team;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\DB;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -15,47 +15,75 @@ class LoginResponse implements LoginResponseContract
     {
         $user = $request->user();
 
-        // Ambil team: current → personal → pertama yang ada
-        $team = $user->currentTeam
-            ?? $user->personalTeam()
-            ?? $user->teams()->orderBy('name')->first();
+        // Cari team via query langsung (hindari relasi cached yang stale)
+        $team = $this->resolveTeam($user);
 
-        // Jika belum punya team sama sekali, buat personal team otomatis
-        if (! $team) {
-            $team = $this->createPersonalTeam($user);
-        }
-
-        // Set sebagai current team jika belum tersimpan
-        if (! $user->current_team_id || $user->current_team_id !== $team->id) {
+        // Pastikan current_team_id tersimpan
+        if ($user->current_team_id !== $team->id) {
             $user->update(['current_team_id' => $team->id]);
-            $user->setRelation('currentTeam', $team);
         }
 
-        // Bangun URL dashboard secara langsung (absolut, bukan via Ziggy)
-        // agar tidak bergantung pada URL::defaults yang mungkin belum aktif
-        $dashboardUrl = url("/{$team->slug}/dashboard");
-
-        // Inertia mengirim header X-Inertia = true tapi juga Accept: text/html
-        // Cek apakah ini pure JSON API request (bukan Inertia)
-        $isInertia = $request->hasHeader('X-Inertia');
-        $isPureJson = $request->wantsJson() && ! $isInertia;
-
-        if ($isPureJson) {
+        // Inertia mengirim X-Inertia header — bukan pure JSON API
+        if ($request->wantsJson() && ! $request->hasHeader('X-Inertia')) {
             return new JsonResponse(['two_factor' => false], 200);
         }
 
-        // Untuk Inertia dan request biasa: redirect ke dashboard
-        // Inertia akan follow redirect ini secara otomatis
-        $intended = session()->pull('url.intended');
+        // Selalu gunakan URL absolut — tidak bergantung Ziggy URL::defaults
+        $dashboardUrl = url("/{$team->slug}/dashboard");
 
-        return redirect($intended && str_contains($intended, $team->slug)
-            ? $intended
-            : $dashboardUrl
-        );
+        // Cek apakah ada intended URL yang valid
+        $intended = $request->hasSession() ? session()->pull('url.intended') : null;
+
+        if ($intended && str_contains($intended, '/' . $team->slug . '/')) {
+            return redirect($intended);
+        }
+
+        return redirect($dashboardUrl);
     }
 
     /**
-     * Buat personal team untuk user yang belum punya team.
+     * Resolve team user:
+     * 1. Current team dari DB
+     * 2. Team pertama yang dimiliki dari DB
+     * 3. Buat personal team baru
+     */
+    private function resolveTeam(\App\Models\User $user): Team
+    {
+        // Cek current_team_id langsung
+        if ($user->current_team_id) {
+            $isMember = DB::table('team_members')
+                ->where('team_id', $user->current_team_id)
+                ->where('user_id', $user->id)
+                ->exists();
+
+            if ($isMember) {
+                $team = Team::whereNull('deleted_at')->find($user->current_team_id);
+                if ($team) {
+                    return $team;
+                }
+            }
+        }
+
+        // Cari team pertama via membership
+        $membership = DB::table('team_members')
+            ->where('user_id', $user->id)
+            ->orderBy('created_at')
+            ->first();
+
+        if ($membership) {
+            $team = Team::whereNull('deleted_at')->find($membership->team_id);
+            if ($team) {
+                return $team;
+            }
+        }
+
+        // Tidak punya team — buat personal team
+        return $this->createPersonalTeam($user);
+    }
+
+    /**
+     * Buat personal team baru untuk user.
+     * Pakai DB::insert langsung agar tidak ada issue dengan Pivot model.
      */
     private function createPersonalTeam(\App\Models\User $user): Team
     {
@@ -64,7 +92,15 @@ class LoginResponse implements LoginResponseContract
             'is_personal' => true,
         ]);
 
-        $team->members()->attach($user->id, ['role' => TeamRole::Owner->value]);
+        DB::table('team_members')->insert([
+            'team_id'    => $team->id,
+            'user_id'    => $user->id,
+            'role'       => TeamRole::Owner->value,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $user->update(['current_team_id' => $team->id]);
 
         return $team;
     }

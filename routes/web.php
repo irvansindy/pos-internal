@@ -55,7 +55,7 @@ Route::middleware(['auth'])->group(function () {
 // TIDAK masuk sini — mereka diregister Fortify sendiri
 // dengan middleware 'web' saja (lihat config/fortify.php: 'middleware' => ['web'])
 Route::prefix('{current_team}')
-    ->middleware(['auth', 'verified', EnsureTeamMembership::class])
+    ->middleware(['auth', EnsureTeamMembership::class])
     ->group(function () {
 
         // Dashboard — tidak perlu permission khusus, semua member bisa akses
@@ -104,117 +104,117 @@ Route::prefix('{current_team}')
                 ->middleware(EnsureTeamPermission::class.':permission.assign');
         });
 
-        Route::get('permissions', [PermissionController::class, 'index'])->name('permissions.index')
-            ->middleware(EnsureTeamPermission::class.':permission.view');
+        // Route::get('permissions', [PermissionController::class, 'index'])->name('permissions.index')
+        //     ->middleware(EnsureTeamPermission::class.':permission.view');
 
-        Route::prefix('menus')->name('menus.')->middleware(EnsureTeamPermission::class.':role.update')->group(function () {
-            Route::get('/', [MenuController::class, 'index'])->name('index');
-            Route::post('/sync', [MenuController::class, 'sync'])->name('sync');
-        });
+        // Route::prefix('menus')->name('menus.')->middleware(EnsureTeamPermission::class.':role.update')->group(function () {
+        //     Route::get('/', [MenuController::class, 'index'])->name('index');
+        //     Route::post('/sync', [MenuController::class, 'sync'])->name('sync');
+        // });
 
-        // ── PRODUCT ───────────────────────────────────────
-        Route::prefix('products')->name('products.')->group(function () {
-            Route::middleware(EnsureTeamPermission::class.':product.view')->group(function () {
-                Route::get('/', [ProductController::class, 'index'])->name('index');
-                Route::get('/{product}', [ProductController::class, 'show'])->name('show');
-            });
-            Route::get('/create', [ProductController::class, 'create'])->name('create')
-                ->middleware(EnsureTeamPermission::class.':product.create');
-            Route::post('/', [ProductController::class, 'store'])->name('store')
-                ->middleware(EnsureTeamPermission::class.':product.create');
-            Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit')
-                ->middleware(EnsureTeamPermission::class.':product.update');
-            Route::put('/{product}', [ProductController::class, 'update'])->name('update')
-                ->middleware(EnsureTeamPermission::class.':product.update');
-            Route::delete('/{product}', [ProductController::class, 'destroy'])->name('destroy')
-                ->middleware(EnsureTeamPermission::class.':product.delete');
-        });
+        // // ── PRODUCT ───────────────────────────────────────
+        // Route::prefix('products')->name('products.')->group(function () {
+        //     Route::middleware(EnsureTeamPermission::class.':product.view')->group(function () {
+        //         Route::get('/', [ProductController::class, 'index'])->name('index');
+        //         Route::get('/{product}', [ProductController::class, 'show'])->name('show');
+        //     });
+        //     Route::get('/create', [ProductController::class, 'create'])->name('create')
+        //         ->middleware(EnsureTeamPermission::class.':product.create');
+        //     Route::post('/', [ProductController::class, 'store'])->name('store')
+        //         ->middleware(EnsureTeamPermission::class.':product.create');
+        //     Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit')
+        //         ->middleware(EnsureTeamPermission::class.':product.update');
+        //     Route::put('/{product}', [ProductController::class, 'update'])->name('update')
+        //         ->middleware(EnsureTeamPermission::class.':product.update');
+        //     Route::delete('/{product}', [ProductController::class, 'destroy'])->name('destroy')
+        //         ->middleware(EnsureTeamPermission::class.':product.delete');
+        // });
 
-        Route::prefix('product-categories')->name('product-categories.')->group(function () {
-            Route::get('/', [ProductCategoryController::class, 'index'])->name('index')
-                ->middleware(EnsureTeamPermission::class.':product.category.view');
-            Route::post('/', [ProductCategoryController::class, 'store'])->name('store')
-                ->middleware(EnsureTeamPermission::class.':product.category.create');
-            Route::put('/{category}', [ProductCategoryController::class, 'update'])->name('update')
-                ->middleware(EnsureTeamPermission::class.':product.category.update');
-            Route::delete('/{category}', [ProductCategoryController::class, 'destroy'])->name('destroy')
-                ->middleware(EnsureTeamPermission::class.':product.category.delete');
-        });
+        // Route::prefix('product-categories')->name('product-categories.')->group(function () {
+        //     Route::get('/', [ProductCategoryController::class, 'index'])->name('index')
+        //         ->middleware(EnsureTeamPermission::class.':product.category.view');
+        //     Route::post('/', [ProductCategoryController::class, 'store'])->name('store')
+        //         ->middleware(EnsureTeamPermission::class.':product.category.create');
+        //     Route::put('/{category}', [ProductCategoryController::class, 'update'])->name('update')
+        //         ->middleware(EnsureTeamPermission::class.':product.category.update');
+        //     Route::delete('/{category}', [ProductCategoryController::class, 'destroy'])->name('destroy')
+        //         ->middleware(EnsureTeamPermission::class.':product.category.delete');
+        // });
 
-        Route::prefix('product-stocks')->name('product-stocks.')->group(function () {
-            Route::get('/', [ProductStockController::class, 'index'])->name('index')
-                ->middleware(EnsureTeamPermission::class.':product.stock.view');
-            Route::post('/{product}/adjust', [ProductStockController::class, 'adjust'])->name('adjust')
-                ->middleware(EnsureTeamPermission::class.':product.stock.adjust');
-            Route::get('/{product}/history', [ProductStockController::class, 'history'])->name('history')
-                ->middleware(EnsureTeamPermission::class.':product.stock.view');
-        });
+        // Route::prefix('product-stocks')->name('product-stocks.')->group(function () {
+        //     Route::get('/', [ProductStockController::class, 'index'])->name('index')
+        //         ->middleware(EnsureTeamPermission::class.':product.stock.view');
+        //     Route::post('/{product}/adjust', [ProductStockController::class, 'adjust'])->name('adjust')
+        //         ->middleware(EnsureTeamPermission::class.':product.stock.adjust');
+        //     Route::get('/{product}/history', [ProductStockController::class, 'history'])->name('history')
+        //         ->middleware(EnsureTeamPermission::class.':product.stock.view');
+        // });
 
-        // ── POS / KASIR ───────────────────────────────────
-        Route::prefix('pos')->name('pos.')->middleware(EnsureTeamPermission::class.':transaction.create')->group(function () {
-            Route::get('/', [PosController::class, 'index'])->name('index');
-            Route::post('/transaction', [PosController::class, 'createTransaction'])->name('transaction.create');
-            Route::post('/transaction/{transaction}/payment', [PosController::class, 'processPayment'])->name('transaction.payment');
-            Route::get('/products/search', [PosController::class, 'searchProducts'])->name('products.search');
-            Route::post('/voucher/validate', [PosController::class, 'validateVoucher'])->name('voucher.validate');
-        });
+        // // ── POS / KASIR ───────────────────────────────────
+        // Route::prefix('pos')->name('pos.')->middleware(EnsureTeamPermission::class.':transaction.create')->group(function () {
+        //     Route::get('/', [PosController::class, 'index'])->name('index');
+        //     Route::post('/transaction', [PosController::class, 'createTransaction'])->name('transaction.create');
+        //     Route::post('/transaction/{transaction}/payment', [PosController::class, 'processPayment'])->name('transaction.payment');
+        //     Route::get('/products/search', [PosController::class, 'searchProducts'])->name('products.search');
+        //     Route::post('/voucher/validate', [PosController::class, 'validateVoucher'])->name('voucher.validate');
+        // });
 
-        // ── TRANSACTIONS ──────────────────────────────────
-        Route::prefix('transactions')->name('transactions.')->group(function () {
-            Route::middleware(EnsureTeamPermission::class.':transaction.view')->group(function () {
-                Route::get('/', [TransactionController::class, 'index'])->name('index');
-                Route::get('/{transaction}', [TransactionController::class, 'show'])->name('show');
-            });
-            Route::post('/{transaction}/void', [TransactionController::class, 'void'])->name('void')
-                ->middleware(EnsureTeamPermission::class.':transaction.void');
-            Route::get('/refunds', [TransactionController::class, 'refunds'])->name('refunds')
-                ->middleware(EnsureTeamPermission::class.':transaction.refund');
-            Route::post('/{transaction}/refund', [TransactionController::class, 'processRefund'])->name('refund')
-                ->middleware(EnsureTeamPermission::class.':transaction.refund');
-            Route::get('/returns', [TransactionController::class, 'returns'])->name('returns')
-                ->middleware(EnsureTeamPermission::class.':transaction.return');
-            Route::post('/{transaction}/return', [TransactionController::class, 'processReturn'])->name('return')
-                ->middleware(EnsureTeamPermission::class.':transaction.return');
-        });
+        // // ── TRANSACTIONS ──────────────────────────────────
+        // Route::prefix('transactions')->name('transactions.')->group(function () {
+        //     Route::middleware(EnsureTeamPermission::class.':transaction.view')->group(function () {
+        //         Route::get('/', [TransactionController::class, 'index'])->name('index');
+        //         Route::get('/{transaction}', [TransactionController::class, 'show'])->name('show');
+        //     });
+        //     Route::post('/{transaction}/void', [TransactionController::class, 'void'])->name('void')
+        //         ->middleware(EnsureTeamPermission::class.':transaction.void');
+        //     Route::get('/refunds', [TransactionController::class, 'refunds'])->name('refunds')
+        //         ->middleware(EnsureTeamPermission::class.':transaction.refund');
+        //     Route::post('/{transaction}/refund', [TransactionController::class, 'processRefund'])->name('refund')
+        //         ->middleware(EnsureTeamPermission::class.':transaction.refund');
+        //     Route::get('/returns', [TransactionController::class, 'returns'])->name('returns')
+        //         ->middleware(EnsureTeamPermission::class.':transaction.return');
+        //     Route::post('/{transaction}/return', [TransactionController::class, 'processReturn'])->name('return')
+        //         ->middleware(EnsureTeamPermission::class.':transaction.return');
+        // });
 
-        Route::prefix('vouchers')->name('vouchers.')->group(function () {
-            Route::middleware(EnsureTeamPermission::class.':voucher.view')->group(function () {
-                Route::get('/', [VoucherController::class, 'index'])->name('index');
-                Route::get('/{voucher}', [VoucherController::class, 'show'])->name('show');
-            });
-            Route::get('/create', [VoucherController::class, 'create'])->name('create')
-                ->middleware(EnsureTeamPermission::class.':voucher.create');
-            Route::post('/', [VoucherController::class, 'store'])->name('store')
-                ->middleware(EnsureTeamPermission::class.':voucher.create');
-            Route::get('/{voucher}/edit', [VoucherController::class, 'edit'])->name('edit')
-                ->middleware(EnsureTeamPermission::class.':voucher.update');
-            Route::put('/{voucher}', [VoucherController::class, 'update'])->name('update')
-                ->middleware(EnsureTeamPermission::class.':voucher.update');
-            Route::delete('/{voucher}', [VoucherController::class, 'destroy'])->name('destroy')
-                ->middleware(EnsureTeamPermission::class.':voucher.delete');
-        });
+        // Route::prefix('vouchers')->name('vouchers.')->group(function () {
+        //     Route::middleware(EnsureTeamPermission::class.':voucher.view')->group(function () {
+        //         Route::get('/', [VoucherController::class, 'index'])->name('index');
+        //         Route::get('/{voucher}', [VoucherController::class, 'show'])->name('show');
+        //     });
+        //     Route::get('/create', [VoucherController::class, 'create'])->name('create')
+        //         ->middleware(EnsureTeamPermission::class.':voucher.create');
+        //     Route::post('/', [VoucherController::class, 'store'])->name('store')
+        //         ->middleware(EnsureTeamPermission::class.':voucher.create');
+        //     Route::get('/{voucher}/edit', [VoucherController::class, 'edit'])->name('edit')
+        //         ->middleware(EnsureTeamPermission::class.':voucher.update');
+        //     Route::put('/{voucher}', [VoucherController::class, 'update'])->name('update')
+        //         ->middleware(EnsureTeamPermission::class.':voucher.update');
+        //     Route::delete('/{voucher}', [VoucherController::class, 'destroy'])->name('destroy')
+        //         ->middleware(EnsureTeamPermission::class.':voucher.delete');
+        // });
 
-        // ── REPORTS ───────────────────────────────────────
-        Route::prefix('reports')->name('reports.')->group(function () {
-            Route::get('/sales', [ReportController::class, 'sales'])->name('sales')
-                ->middleware(EnsureTeamPermission::class.':report.sales');
-            Route::get('/stock', [ReportController::class, 'stock'])->name('stock')
-                ->middleware(EnsureTeamPermission::class.':report.stock');
-            Route::get('/cashier', [ReportController::class, 'cashier'])->name('cashier')
-                ->middleware(EnsureTeamPermission::class.':report.cashier');
-            Route::get('/export', [ReportController::class, 'export'])->name('export')
-                ->middleware(EnsureTeamPermission::class.':report.export');
-        });
+        // // ── REPORTS ───────────────────────────────────────
+        // Route::prefix('reports')->name('reports.')->group(function () {
+        //     Route::get('/sales', [ReportController::class, 'sales'])->name('sales')
+        //         ->middleware(EnsureTeamPermission::class.':report.sales');
+        //     Route::get('/stock', [ReportController::class, 'stock'])->name('stock')
+        //         ->middleware(EnsureTeamPermission::class.':report.stock');
+        //     Route::get('/cashier', [ReportController::class, 'cashier'])->name('cashier')
+        //         ->middleware(EnsureTeamPermission::class.':report.cashier');
+        //     Route::get('/export', [ReportController::class, 'export'])->name('export')
+        //         ->middleware(EnsureTeamPermission::class.':report.export');
+        // });
 
-        // ── SETTINGS ─────────────────────────────────────
-        Route::prefix('settings')->name('settings.')->middleware(EnsureTeamPermission::class.':setting.system')->group(function () {
-            Route::get('/system', [SettingController::class, 'system'])->name('system');
-            Route::put('/system', [SettingController::class, 'updateSystem'])->name('system.update');
-            Route::get('/membership', [SettingController::class, 'membership'])->name('membership')
-                ->middleware(EnsureTeamPermission::class.':membership.manage');
-            Route::put('/membership', [SettingController::class, 'updateMembership'])->name('membership.update')
-                ->middleware(EnsureTeamPermission::class.':membership.manage');
-        });
+        // // ── SETTINGS ─────────────────────────────────────
+        // Route::prefix('settings')->name('settings.')->middleware(EnsureTeamPermission::class.':setting.system')->group(function () {
+        //     Route::get('/system', [SettingController::class, 'system'])->name('system');
+        //     Route::put('/system', [SettingController::class, 'updateSystem'])->name('system.update');
+        //     Route::get('/membership', [SettingController::class, 'membership'])->name('membership')
+        //         ->middleware(EnsureTeamPermission::class.':membership.manage');
+        //     Route::put('/membership', [SettingController::class, 'updateMembership'])->name('membership.update')
+        //         ->middleware(EnsureTeamPermission::class.':membership.manage');
+        // });
     });
 
 require __DIR__.'/settings.php';
