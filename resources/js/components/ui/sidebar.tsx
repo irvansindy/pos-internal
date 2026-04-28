@@ -264,27 +264,34 @@ function TeamSwitcherWidget({ current, teams }: {
                 <>
                     <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setOpen(false)} />
                     <div style={{
-                        position: 'absolute', left: 0, top: '100%', marginTop: '4px',
-                        width: '220px', zIndex: 20, borderRadius: '10px',
-                        border: '1px solid var(--sidebar-border)',
-                        backgroundColor: 'var(--sidebar-background)',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                        position: 'absolute', left: 0, top: '100%', marginTop: '6px',
+                        width: '236px', zIndex: 50, borderRadius: '12px',
+                        // Gunakan --popover (selalu solid) bukan --sidebar-background yang bisa transparan
+                        backgroundColor: 'var(--popover)',
+                        color: 'var(--popover-foreground)',
+                        border: '1px solid var(--border)',
+                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 10px 15px -3px rgba(0,0,0,0.15)',
                         overflow: 'hidden',
                     }}>
-                        <div style={{ padding: '8px 12px 4px' }}>
+                        {/* Header label */}
+                        <div style={{
+                            padding: '10px 12px 8px',
+                            borderBottom: '1px solid var(--border)',
+                        }}>
                             <p style={{
-                                fontSize: '11px', opacity: 0.5,
-                                color: 'var(--sidebar-foreground)',
-                                fontWeight: 600, textTransform: 'uppercase',
-                                letterSpacing: '0.05em', margin: 0,
+                                fontSize: '11px', fontWeight: 600,
+                                color: 'var(--muted-foreground)',
+                                textTransform: 'uppercase', letterSpacing: '0.06em',
+                                margin: 0,
                             }}>Pilih Tim</p>
                         </div>
+                        {/* List tim */}
+                        <div style={{ padding: '4px' }}>
                         {teams.map(team => (
                             <button
                                 key={team.id}
                                 onClick={() => {
                                     setOpen(false);
-                                    // POST ke switch route, lalu redirect manual
                                     router.post(`/current-team/switch/${team.slug}`, {}, {
                                         onSuccess: () => {
                                             window.location.href = `/${team.slug}/dashboard`;
@@ -293,27 +300,51 @@ function TeamSwitcherWidget({ current, teams }: {
                                 }}
                                 style={{
                                     width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
-                                    padding: '8px 12px', fontSize: '13px',
-                                    background: 'none', border: 'none', cursor: 'pointer',
+                                    padding: '7px 10px', fontSize: '13px', borderRadius: '8px',
+                                    backgroundColor: team.is_current ? 'var(--accent)' : 'transparent',
+                                    border: 'none', cursor: 'pointer',
                                     transition: 'background-color 0.15s', textAlign: 'left',
                                 }}
-                                onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--sidebar-accent)')}
-                                onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--accent)')}
+                                onMouseLeave={e => (e.currentTarget.style.backgroundColor = team.is_current ? 'var(--accent)' : 'transparent')}
                             >
+                                {/* Avatar huruf pertama nama tim */}
+                                <div style={{
+                                    height: '32px', width: '32px', borderRadius: '8px',
+                                    backgroundColor: 'var(--primary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    flexShrink: 0, fontSize: '14px', fontWeight: 700,
+                                    color: 'var(--primary-foreground)',
+                                }}>
+                                    {team.name.charAt(0).toUpperCase()}
+                                </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{
-                                        fontWeight: 500, color: 'var(--sidebar-foreground)',
+                                        fontWeight: 500, fontSize: '13px',
+                                        color: 'var(--popover-foreground)',
                                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                     }}>{team.name}</div>
-                                    <div style={{ fontSize: '11px', color: 'var(--sidebar-foreground)', opacity: 0.5 }}>
-                                        {team.role_label}
+                                    <div style={{
+                                        fontSize: '11px', color: 'var(--muted-foreground)',
+                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                    }}>
+                                        {team.role_label ?? 'Member'}
                                     </div>
                                 </div>
+                                {/* Indicator tim aktif */}
                                 {team.is_current && (
-                                    <Check size={13} style={{ color: 'var(--sidebar-primary)', flexShrink: 0 }} />
+                                    <div style={{
+                                        height: '20px', width: '20px', borderRadius: '50%',
+                                        backgroundColor: 'var(--primary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        flexShrink: 0,
+                                    }}>
+                                        <Check size={11} style={{ color: 'var(--primary-foreground)' }} />
+                                    </div>
                                 )}
                             </button>
                         ))}
+                        </div>
                     </div>
                 </>
             )}
@@ -323,12 +354,13 @@ function TeamSwitcherWidget({ current, teams }: {
 
 // ─── Main Sidebar Export ──────────────────────────────────
 export default function Sidebar() {
-    const { auth, navigation } = usePage().props as any;
+    const page = usePage();
+    const { auth, navigation } = page.props as any;
     const navItems: NavItem[] = navigation ?? [];
     const currentTeam: CurrentTeam | null = auth?.user?.current_team ?? null;
     const teamSlug = currentTeam?.slug ?? '';
-    // Ambil path dari window.location agar akurat
-    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    // Gunakan page.url dari Inertia — konsisten di server & client, tidak ada hydration mismatch
+    const currentPath = page.url.split('?')[0];
     const dashboardUrl = teamSlug ? `/${teamSlug}/dashboard` : '/';
     const logoutUrl = '/logout';
 

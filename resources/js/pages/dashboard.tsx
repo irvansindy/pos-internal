@@ -94,7 +94,7 @@ export default function Dashboard({ stats, isOwner }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                 {/* Header */}
                 <div>
-                    <h1 style={{ fontSize: '20px', fontWeight: 600, margin: 0, color: 'var(--color-text-primary, #111827)' }}>
+                    <h1 style={{ fontSize: '20px', fontWeight: 600, margin: 0, color: 'var(--color-text-primary, #ffffff)' }}>
                         Dashboard
                     </h1>
                     <p style={{ fontSize: '14px', color: 'var(--color-text-secondary, #6b7280)', margin: '4px 0 0' }}>
@@ -140,7 +140,8 @@ export default function Dashboard({ stats, isOwner }: Props) {
                                     height: '40px', padding: '0 20px', borderRadius: '10px',
                                     border: '1px solid var(--color-border-tertiary, #e5e7eb)',
                                     backgroundColor: 'transparent',
-                                    color: 'var(--color-text-primary, #111827)',
+                                    // color: 'var(--color-text-primary, #111827)',
+                                    color: 'var(--color-text-primary, #ffffff)',
                                     textDecoration: 'none', fontSize: '14px', fontWeight: 500,
                                 }}
                             >
