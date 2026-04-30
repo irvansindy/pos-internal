@@ -2,200 +2,166 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\User\AcceptInvitationAction;
+use App\Actions\User\InviteUserAction;
+use App\Actions\User\RemoveUserAction;
+use App\Actions\User\ResetUserPasswordAction;
+use App\Actions\User\UpdateUserAction;
 use App\Enums\TeamRole;
-use App\Models\Team;
+use App\Http\Requests\User\InviteUserRequest;
+use App\Http\Requests\User\ResetPasswordRequest;
+use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\TeamInvitation;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
+    public function __construct(
+        private readonly InviteUserAction        $inviteUser,
+        private readonly UpdateUserAction        $updateUser,
+        private readonly RemoveUserAction        $removeUser,
+        private readonly ResetUserPasswordAction $resetPassword,
+        private readonly AcceptInvitationAction  $acceptInvitation,
+    ) {}
+
+    // ── MEMBERS ───────────────────────────────────────────
+
     public function index(Request $request): Response
     {
-        $user = $request->user();
-        $team = $user->currentTeam;
+        $authUser = $request->user();
+        $team     = $authUser->currentTeam;
+
+        setPermissionsTeamId($team->id);
 
         $members = $team->members()
             ->with(['teamMemberships' => fn ($q) => $q->where('team_id', $team->id)])
             ->get()
-            ->map(function (User $member) use ($team) {
-                setPermissionsTeamId($team->id);
-                $roles = $member->getRoleNames();
-
-                return [
-                    'id' => $member->id,
-                    'name' => $member->name,
-                    'email' => $member->email,
-                    'email_verified_at' => $member->email_verified_at,
-                    'team_role' => $member->teamRole($team)?->value,
-                    'team_role_label' => $member->teamRole($team)?->label(),
-                    'is_owner' => $member->ownsTeam($team),
-                    'roles' => $roles,
-                    'pivot' => [
-                        'joined_at' => $member->pivot->created_at,
-                    ],
-                ];
-            });
+            ->map(fn (User $member) => [
+                'id'                => $member->id,
+                'name'              => $member->name,
+                'email'             => $member->email,
+                'email_verified_at' => $member->email_verified_at,
+                'team_role'         => $member->teamRole($team)?->value,
+                'team_role_label'   => $member->teamRole($team)?->label(),
+                'is_owner'          => $member->ownsTeam($team),
+                'roles'             => $member->getRoleNames(),
+                'joined_at'         => $member->pivot->created_at,
+            ]);
 
         $availableRoles = Role::where('team_id', $team->id)
             ->get(['id', 'name', 'label'])
             ->map(fn ($r) => ['value' => $r->name, 'label' => $r->label ?? ucfirst($r->name)]);
 
-        return Inertia::render('Users/Index', [
-            'members' => $members,
+        return Inertia::render('users/index', [
+            'members'        => $members,
             'availableRoles' => $availableRoles,
-            'teamRoles' => TeamRole::assignable(),
-            'canInvite' => $user->canOnCurrentTeam('user.invite'),
-            'canUpdate' => $user->canOnCurrentTeam('user.update'),
-            'canDelete' => $user->canOnCurrentTeam('user.delete'),
+            'teamRoles'      => TeamRole::assignable(),
+            'canInvite'      => $authUser->canOnCurrentTeam('user.invite'),
+            'canUpdate'      => $authUser->canOnCurrentTeam('user.update'),
+            'canDelete'      => $authUser->canOnCurrentTeam('user.delete'),
         ]);
     }
 
-    public function show(Request $request, User $user): Response
+    public function show(Request $request, mixed $user): Response
     {
+        $user = $this->resolveUserModel($user);
         $team = $request->user()->currentTeam;
-
-        // Ensure user is in same team
-        if (! $user->belongsToTeam($team)) {
-            abort(404);
-        }
+        abort_unless($user->belongsToTeam($team), 404);
 
         setPermissionsTeamId($team->id);
 
-        return Inertia::render('Users/Show', [
+        return Inertia::render('users/show', [
             'member' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
+                'id'                => $user->id,
+                'name'              => $user->name,
+                'email'             => $user->email,
                 'email_verified_at' => $user->email_verified_at,
-                'team_role' => $user->teamRole($team)?->value,
-                'team_role_label' => $user->teamRole($team)?->label(),
-                'is_owner' => $user->ownsTeam($team),
-                'roles' => $user->getRoleNames(),
-                'permissions' => $user->getAllPermissions()->pluck('name'),
-                'teams' => $user->toUserTeams(),
+                'team_role'         => $user->teamRole($team)?->value,
+                'team_role_label'   => $user->teamRole($team)?->label(),
+                'is_owner'          => $user->ownsTeam($team),
+                'roles'             => $user->getRoleNames(),
+                'permissions'       => $user->getAllPermissions()->pluck('name'),
+                'teams'             => $user->toUserTeams(),
             ],
         ]);
     }
 
-    public function edit(Request $request, User $user): Response
+    public function edit(Request $request, mixed $user): Response
     {
+        $user = $this->resolveUserModel($user);
         $team = $request->user()->currentTeam;
-        if (! $user->belongsToTeam($team)) {
-            abort(404);
-        }
+        abort_unless($user->belongsToTeam($team), 404);
 
         setPermissionsTeamId($team->id);
-        $availableRoles = Role::where('team_id', $team->id)->get(['id', 'name', 'label']);
 
-        return Inertia::render('Users/Edit', [
+        return Inertia::render('users/edit', [
             'member' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
+                'id'        => $user->id,
+                'name'      => $user->name,
+                'email'     => $user->email,
                 'team_role' => $user->teamRole($team)?->value,
-                'roles' => $user->getRoleNames(),
+                'roles'     => $user->getRoleNames(),
             ],
-            'availableRoles' => $availableRoles->map(fn ($r) => [
-                'value' => $r->name,
-                'label' => $r->label ?? ucfirst($r->name),
-            ]),
+            'availableRoles' => Role::where('team_id', $team->id)
+                ->get(['id', 'name', 'label'])
+                ->map(fn ($r) => ['value' => $r->name, 'label' => $r->label ?? ucfirst($r->name)]),
             'teamRoles' => TeamRole::assignable(),
         ]);
     }
 
-    public function update(Request $request, User $user): RedirectResponse
+    public function update(UpdateUserRequest $request, mixed $user): RedirectResponse
     {
+        $user = $this->resolveUserModel($user);
         $team = $request->user()->currentTeam;
-        if (! $user->belongsToTeam($team)) {
-            abort(404);
-        }
+        abort_unless($user->belongsToTeam($team), 404);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'team_role' => ['required', 'string', 'in:admin,member'],
-            'role' => ['nullable', 'string', 'exists:roles,name'],
-        ]);
+        $this->updateUser->execute(
+            team: $team,
+            member: $user,
+            teamRole: $request->validated('team_role'),
+            roleName: $request->validated('role'),
+        );
 
-        // Update membership role
-        $team->memberships()
-            ->where('user_id', $user->id)
-            ->update(['role' => $validated['team_role']]);
-
-        // Sync spatie role
-        if ($validated['role']) {
-            setPermissionsTeamId($team->id);
-            $role = Role::where('name', $validated['role'])
-                ->where('team_id', $team->id)
-                ->first();
-
-            if ($role) {
-                // Remove old roles on this team, assign new
-                $oldRoles = $user->getRoleNames();
-                foreach ($oldRoles as $oldRole) {
-                    if (Role::where('name', $oldRole)->where('team_id', $team->id)->exists()) {
-                        $user->removeRole($oldRole);
-                    }
-                }
-                $user->assignRole($role);
-            }
-        }
-
-        return redirect()->route('users.index')
+        return redirect()
+            ->to(url("/{$team->slug}/users"))
             ->with('success', "User \"{$user->name}\" berhasil diperbarui.");
     }
 
-    public function destroy(Request $request, User $user): RedirectResponse
+    public function destroy(Request $request, mixed $user): RedirectResponse
     {
-        $team = $request->user()->currentTeam;
+        $user = $this->resolveUserModel($user);
         $authUser = $request->user();
+        $team     = $authUser->currentTeam;
 
         if ($user->id === $authUser->id) {
             return back()->with('error', 'Anda tidak dapat menghapus diri sendiri.');
         }
 
         if ($user->ownsTeam($team)) {
-            return back()->with('error', 'Owner tim tidak dapat dihapus.');
+            return back()->with('error', 'Owner tim tidak dapat dihapus dari tim.');
         }
 
-        if (! $user->belongsToTeam($team)) {
-            abort(404);
-        }
+        abort_unless($user->belongsToTeam($team), 404);
 
-        // Remove from team (not deleting the user globally)
-        setPermissionsTeamId($team->id);
-        $user->removeRole(Role::where('team_id', $team->id)->whereIn('name', $user->getRoleNames())->pluck('name')->toArray());
-        $team->members()->detach($user->id);
+        $this->removeUser->execute($team, $user);
 
-        // If this was their current team, switch to another
-        if ($user->current_team_id === $team->id) {
-            $fallback = $user->fallbackTeam($team);
-            $user->update(['current_team_id' => $fallback?->id]);
-        }
-
-        return redirect()->route('users.index')
+        return redirect()
+            ->to(url("/{$team->slug}/users"))
             ->with('success', "User \"{$user->name}\" berhasil dihapus dari tim.");
     }
 
-    public function resetPassword(Request $request, User $user): RedirectResponse
+    public function resetUserPassword(ResetPasswordRequest $request, mixed $user): RedirectResponse
     {
+        $user = $this->resolveUserModel($user);
         $team = $request->user()->currentTeam;
-        if (! $user->belongsToTeam($team)) {
-            abort(404);
-        }
+        abort_unless($user->belongsToTeam($team), 404);
 
-        $request->validate([
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ]);
-
-        $user->update(['password' => Hash::make($request->password)]);
+        $this->resetPassword->execute($user, $request->validated('password'));
 
         return back()->with('success', "Password user \"{$user->name}\" berhasil direset.");
     }
@@ -208,71 +174,44 @@ class UserController extends Controller
 
         $invitations = $team->invitations()
             ->with('inviter:id,name,email')
-            ->orderByDesc('created_at')
+            ->latest()
             ->get()
             ->map(fn (TeamInvitation $inv) => [
-                'id' => $inv->id,
-                'email' => $inv->email,
-                'role' => $inv->role?->value,
-                'role_label' => $inv->role?->label(),
-                'invited_by' => $inv->inviter?->name,
-                'expires_at' => $inv->expires_at,
+                'id'          => $inv->id,
+                'email'       => $inv->email,
+                'role'        => $inv->role?->value,
+                'role_label'  => $inv->role?->label(),
+                'invited_by'  => $inv->inviter?->name,
+                'expires_at'  => $inv->expires_at,
                 'accepted_at' => $inv->accepted_at,
-                'status' => $inv->isAccepted() ? 'accepted' : ($inv->isExpired() ? 'expired' : 'pending'),
+                'status'      => match (true) {
+                    $inv->isAccepted() => 'accepted',
+                    $inv->isExpired()  => 'expired',
+                    default            => 'pending',
+                },
             ]);
 
-        return Inertia::render('Users/Invitations', [
+        return Inertia::render('users/invitations', [
             'invitations' => $invitations,
-            'teamRoles' => TeamRole::assignable(),
+            'teamRoles'   => TeamRole::assignable(),
         ]);
     }
 
-    public function invite(Request $request): RedirectResponse
+    public function invite(InviteUserRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'email' => ['required', 'email', 'max:255'],
-            'role' => ['required', 'string', 'in:admin,member'],
-        ]);
+        $this->inviteUser->execute(
+            team: $request->user()->currentTeam,
+            email: $request->validated('email'),
+            role: $request->validated('role'),
+            inviter: $request->user(),
+        );
 
-        $team = $request->user()->currentTeam;
-
-        // Check if already a member
-        $alreadyMember = $team->members()->where('email', $validated['email'])->exists();
-        if ($alreadyMember) {
-            return back()->withErrors(['email' => 'User ini sudah menjadi anggota tim.']);
-        }
-
-        // Check pending invitation
-        $pending = $team->invitations()
-            ->where('email', $validated['email'])
-            ->whereNull('accepted_at')
-            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-            ->exists();
-
-        if ($pending) {
-            return back()->withErrors(['email' => 'Undangan ke email ini masih pending.']);
-        }
-
-        $invitation = TeamInvitation::create([
-            'team_id' => $team->id,
-            'email' => $validated['email'],
-            'role' => $validated['role'],
-            'invited_by' => $request->user()->id,
-            'expires_at' => now()->addDays(7),
-        ]);
-
-        // TODO: Send invitation email
-        // Mail::to($validated['email'])->send(new TeamInvitationMail($invitation));
-
-        return back()->with('success', "Undangan berhasil dikirim ke {$validated['email']}.");
+        return back()->with('success', "Undangan berhasil dikirim ke {$request->validated('email')}.");
     }
 
     public function cancelInvitation(Request $request, TeamInvitation $invitation): RedirectResponse
     {
-        $team = $request->user()->currentTeam;
-        if ($invitation->team_id !== $team->id) {
-            abort(403);
-        }
+        abort_unless($invitation->team_id === $request->user()->currentTeam->id, 403);
 
         $invitation->delete();
 
@@ -281,13 +220,9 @@ class UserController extends Controller
 
     public function resendInvitation(Request $request, TeamInvitation $invitation): RedirectResponse
     {
-        $team = $request->user()->currentTeam;
-        if ($invitation->team_id !== $team->id) {
-            abort(403);
-        }
+        abort_unless($invitation->team_id === $request->user()->currentTeam->id, 403);
 
         $invitation->update(['expires_at' => now()->addDays(7)]);
-        // TODO: Resend email
 
         return back()->with('success', 'Undangan berhasil dikirim ulang.');
     }
@@ -297,42 +232,48 @@ class UserController extends Controller
         $user = $request->user();
 
         if (! $user) {
-            return redirect()->route('login')->with('info', 'Silakan login terlebih dahulu untuk menerima undangan.');
+            return redirect()->route('login')
+                ->with('info', 'Silakan login terlebih dahulu untuk menerima undangan.');
         }
 
         if ($invitation->email !== $user->email) {
-            return redirect()->route('dashboard')->with('error', 'Undangan ini bukan untuk akun Anda.');
+            return back()->with('error', 'Undangan ini bukan untuk akun Anda.');
         }
 
         if ($invitation->isExpired()) {
-            return redirect()->route('dashboard')->with('error', 'Undangan ini sudah kedaluwarsa.');
+            return back()->with('error', 'Undangan ini sudah kedaluwarsa.');
         }
 
         if ($invitation->isAccepted()) {
-            return redirect()->route('dashboard')->with('info', 'Anda sudah bergabung dengan tim ini.');
+            return back()->with('info', 'Anda sudah bergabung dengan tim ini.');
         }
 
-        $team = $invitation->team;
+        $this->acceptInvitation->execute($invitation, $user);
 
-        $team->members()->syncWithoutDetaching([
-            $user->id => ['role' => $invitation->role->value],
-        ]);
+        return redirect(url("/{$invitation->team->slug}/dashboard"))
+            ->with('success', "Selamat datang di tim \"{$invitation->team->name}\"!");
+    }
 
-        $invitation->update(['accepted_at' => now()]);
-
-        // Assign corresponding spatie role
-        setPermissionsTeamId($team->id);
-        $role = Role::where('name', $invitation->role === TeamRole::Admin ? 'admin' : 'kasir')
-            ->where('team_id', $team->id)
-            ->first();
-
-        if ($role) {
-            $user->assignRole($role);
+    /**
+     * Resolve a route `user` parameter to an App\Models\User instance.
+     * Accepts User model, numeric id, string id, array (attrs) or object.
+     */
+    private function resolveUserModel(mixed $value): User
+    {
+        if ($value instanceof User) {
+            return $value;
         }
 
-        $user->switchTeam($team);
+        // If array or object with id attribute
+        if (is_array($value) && isset($value['id'])) {
+            return User::findOrFail($value['id']);
+        }
 
-        return redirect()->route('dashboard')
-            ->with('success', "Selamat datang di tim \"{$team->name}\"!");
+        if (is_object($value) && isset($value->id)) {
+            return User::findOrFail($value->id);
+        }
+
+        // Fallback: treat as scalar id (string/int)
+        return User::findOrFail($value);
     }
 }

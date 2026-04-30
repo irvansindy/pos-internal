@@ -73,7 +73,7 @@ Route::prefix('{current_team}')
                 ->middleware(EnsureTeamPermission::class.':user.update');
             Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy')
                 ->middleware(EnsureTeamPermission::class.':user.delete');
-            Route::post('/{user}/reset-password', [UserController::class, 'resetPassword'])->name('reset-password')
+            Route::post('/{user}/reset-password', [UserController::class, 'resetUserPassword'])->name('reset-password')
                 ->middleware(EnsureTeamPermission::class.':user.update');
         });
 
