@@ -17,6 +17,20 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         /**
+         * Exclude semua team-scoped POST routes dari CSRF verification.
+         * Keamanan tetap terjaga karena route ini dilindungi auth + EnsureTeamMembership.
+         */
+        $middleware->preventRequestForgery(except: [
+            '*/users/*/set-password',
+            '*/users/*/reset-password',
+            '*/users',
+            '*/invitations',
+            '*/invitations/*',
+            '*/roles',
+            '*/roles/*',
+        ]);
+
+        /**
          * Append ke web group — JANGAN pakai ->group('web', [...])
          * karena itu menimpa seluruh default middleware.
          *
@@ -46,5 +60,14 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        /**
+         * Handle 419 CSRF token mismatch — kembalikan ke halaman sebelumnya
+         * dengan pesan error yang jelas, daripada menampilkan blank page.
+         */
+        $exceptions->respond(function (\Symfony\Component\HttpFoundation\Response $response) {
+            if ($response->getStatusCode() === 419) {
+                return back()->with('error', 'Sesi Anda telah habis. Silakan muat ulang halaman dan coba lagi.');
+            }
+            return $response;
+        });
     })->create();

@@ -67,9 +67,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function show(Request $request, mixed $user): Response
+    public function show(Request $request, string $userId): Response
     {
-        $user = $this->resolveUserModel($user);
+        $user = User::findOrFail($userId);
         $team = $request->user()->currentTeam;
         abort_unless($user->belongsToTeam($team), 404);
 
@@ -91,9 +91,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function edit(Request $request, mixed $user): Response
+    public function edit(Request $request, string $userId): Response
     {
-        $user = $this->resolveUserModel($user);
+        $user = User::findOrFail($userId);
         $team = $request->user()->currentTeam;
         abort_unless($user->belongsToTeam($team), 404);
 
@@ -114,9 +114,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function update(UpdateUserRequest $request, mixed $user): RedirectResponse
+    public function update(UpdateUserRequest $request, string $userId): RedirectResponse
     {
-        $user = $this->resolveUserModel($user);
+        $user = User::findOrFail($userId);
         $team = $request->user()->currentTeam;
         abort_unless($user->belongsToTeam($team), 404);
 
@@ -132,9 +132,9 @@ class UserController extends Controller
             ->with('success', "User \"{$user->name}\" berhasil diperbarui.");
     }
 
-    public function destroy(Request $request, mixed $user): RedirectResponse
+    public function destroy(Request $request, string $userId): RedirectResponse
     {
-        $user = $this->resolveUserModel($user);
+        $user     = User::findOrFail($userId);
         $authUser = $request->user();
         $team     = $authUser->currentTeam;
 
@@ -155,16 +155,18 @@ class UserController extends Controller
             ->with('success', "User \"{$user->name}\" berhasil dihapus dari tim.");
     }
 
-    public function resetUserPassword(ResetPasswordRequest $request, mixed $user): RedirectResponse
-    {
-        $user = $this->resolveUserModel($user);
-        $team = $request->user()->currentTeam;
-        abort_unless($user->belongsToTeam($team), 404);
+    public function resetUserPassword(ResetPasswordRequest $request, string $current_team, string $userId): RedirectResponse
+{
+    \Log::info('called', ['current_team' => $current_team, 'userId' => $userId]);
 
-        $this->resetPassword->execute($user, $request->validated('password'));
+    $user = User::findOrFail($userId);
+    $team = $request->user()->currentTeam;
+    abort_unless($user->belongsToTeam($team), 404);
 
-        return back()->with('success', "Password user \"{$user->name}\" berhasil direset.");
-    }
+    $this->resetPassword->execute($user, $request->validated('password'));
+
+    return back()->with('success', "Password user \"{$user->name}\" berhasil direset.");
+}
 
     // ── INVITATIONS ───────────────────────────────────────
 
@@ -252,28 +254,5 @@ class UserController extends Controller
 
         return redirect(url("/{$invitation->team->slug}/dashboard"))
             ->with('success', "Selamat datang di tim \"{$invitation->team->name}\"!");
-    }
-
-    /**
-     * Resolve a route `user` parameter to an App\Models\User instance.
-     * Accepts User model, numeric id, string id, array (attrs) or object.
-     */
-    private function resolveUserModel(mixed $value): User
-    {
-        if ($value instanceof User) {
-            return $value;
-        }
-
-        // If array or object with id attribute
-        if (is_array($value) && isset($value['id'])) {
-            return User::findOrFail($value['id']);
-        }
-
-        if (is_object($value) && isset($value->id)) {
-            return User::findOrFail($value->id);
-        }
-
-        // Fallback: treat as scalar id (string/int)
-        return User::findOrFail($value);
     }
 }

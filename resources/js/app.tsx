@@ -1,4 +1,6 @@
 import { createInertiaApp } from '@inertiajs/react';
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+import { createRoot } from 'react-dom/client';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
@@ -10,7 +12,27 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
-    layout: (name) => {
+
+    resolve: async (name) => {
+        const page = await resolvePageComponent(
+            `./pages/${name}.tsx`,
+            import.meta.glob('./pages/**/*.tsx'),
+        );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return page as any;
+    },
+
+    setup({ el, App, props }) {
+        createRoot(el).render(
+            <TooltipProvider delayDuration={0}>
+                <App {...props} />
+                <Toaster />
+            </TooltipProvider>
+        );
+    },
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    layout: (name: string): any => {
         switch (true) {
             case name === 'welcome':
                 return null;
@@ -23,15 +45,7 @@ createInertiaApp({
                 return AppLayout;
         }
     },
-    strictMode: true,
-    withApp(app) {
-        return (
-            <TooltipProvider delayDuration={0}>
-                {app}
-                <Toaster />
-            </TooltipProvider>
-        );
-    },
+
     progress: {
         color: '#4B5563',
     },

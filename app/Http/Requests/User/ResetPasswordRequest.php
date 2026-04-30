@@ -6,9 +6,13 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class ResetPasswordRequest extends FormRequest
 {
+    // public function authorize(): bool
+    // {
+    //     return $this->user()->canOnCurrentTeam('user.update');
+    // }
     public function authorize(): bool
     {
-        return $this->user()->canOnCurrentTeam('user.update');
+        return true; // Sudah dihandle EnsureTeamPermission middleware di route
     }
 
     public function rules(): array

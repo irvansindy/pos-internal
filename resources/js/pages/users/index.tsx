@@ -221,7 +221,7 @@ function ResetPasswordModal({ member, teamSlug, onClose }: { member: Member; tea
     });
 
     function submit() {
-        post(buildUrl(`/users/${member.id}/reset-password`, teamSlug), {
+        post(buildUrl(`/users/${member.id}/set-password`, teamSlug), {
             onSuccess: () => { reset(); onClose(); },
         });
     }
