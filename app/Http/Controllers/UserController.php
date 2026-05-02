@@ -29,6 +29,15 @@ class UserController extends Controller
         private readonly AcceptInvitationAction  $acceptInvitation,
     ) {}
 
+    // ── Resolve user dari route parameter secara eksplisit ────────────────────
+    // Menggunakan $request->route('userId') untuk menghindari konflik binding
+    // dengan {current_team} prefix parameter.
+    private function resolveUser(Request $request): User
+    {
+        $userId = $request->route('userId');
+        return User::findOrFail($userId);
+    }
+
     // ── MEMBERS ───────────────────────────────────────────
 
     public function index(Request $request): Response
@@ -67,9 +76,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function show(Request $request, string $userId): Response
+    public function show(Request $request): Response
     {
-        $user = User::findOrFail($userId);
+        $user = $this->resolveUser($request);
         $team = $request->user()->currentTeam;
         abort_unless($user->belongsToTeam($team), 404);
 
@@ -91,9 +100,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function edit(Request $request, string $userId): Response
+    public function edit(Request $request): Response
     {
-        $user = User::findOrFail($userId);
+        $user = $this->resolveUser($request);
         $team = $request->user()->currentTeam;
         abort_unless($user->belongsToTeam($team), 404);
 
@@ -114,27 +123,30 @@ class UserController extends Controller
         ]);
     }
 
-    public function update(UpdateUserRequest $request, string $userId): RedirectResponse
+    public function update(Request $request): RedirectResponse
     {
-        $user = User::findOrFail($userId);
+        $user = $this->resolveUser($request);
         $team = $request->user()->currentTeam;
         abort_unless($user->belongsToTeam($team), 404);
+
+        $validated = $request->validate([
+            'team_role' => ['required', 'string'],
+            'role'      => ['nullable', 'string'],
+        ]);
 
         $this->updateUser->execute(
             team: $team,
             member: $user,
-            teamRole: $request->validated('team_role'),
-            roleName: $request->validated('role'),
+            teamRole: $validated['team_role'],
+            roleName: $validated['role'] ?? null,
         );
 
-        return redirect()
-            ->to(url("/{$team->slug}/users"))
-            ->with('success', "User \"{$user->name}\" berhasil diperbarui.");
+        return back()->with('success', "User \"{$user->name}\" berhasil diperbarui.");
     }
 
-    public function destroy(Request $request, string $userId): RedirectResponse
+    public function destroy(Request $request): RedirectResponse
     {
-        $user     = User::findOrFail($userId);
+        $user     = $this->resolveUser($request);
         $authUser = $request->user();
         $team     = $authUser->currentTeam;
 
@@ -150,23 +162,27 @@ class UserController extends Controller
 
         $this->removeUser->execute($team, $user);
 
-        return redirect()
-            ->to(url("/{$team->slug}/users"))
-            ->with('success', "User \"{$user->name}\" berhasil dihapus dari tim.");
+        return back()->with('success', "User \"{$user->name}\" berhasil dihapus dari tim.");
     }
 
-    public function resetUserPassword(ResetPasswordRequest $request, string $current_team, string $userId): RedirectResponse
-{
-    \Log::info('called', ['current_team' => $current_team, 'userId' => $userId]);
+    public function resetUserPassword(Request $request): RedirectResponse
+    {
+        $user = $this->resolveUser($request);
+        $team = $request->user()->currentTeam;
+        abort_unless($user->belongsToTeam($team), 404);
 
-    $user = User::findOrFail($userId);
-    $team = $request->user()->currentTeam;
-    abort_unless($user->belongsToTeam($team), 404);
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'password.required'  => 'Password wajib diisi.',
+            'password.min'       => 'Password minimal 8 karakter.',
+            'password.confirmed' => 'Konfirmasi password tidak cocok.',
+        ]);
 
-    $this->resetPassword->execute($user, $request->validated('password'));
+        $this->resetPassword->execute($user, $validated['password']);
 
-    return back()->with('success', "Password user \"{$user->name}\" berhasil direset.");
-}
+        return back()->with('success', "Password user \"{$user->name}\" berhasil direset.");
+    }
 
     // ── INVITATIONS ───────────────────────────────────────
 

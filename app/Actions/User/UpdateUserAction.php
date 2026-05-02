@@ -25,9 +25,10 @@ class UpdateUserAction
 
             if ($role) {
                 // Cabut semua role lama di team ini
+                // Gunakan qualified column name untuk menghindari ambiguous team_id
                 $existingRoles = $member->roles()
-                    ->where('team_id', $team->id)
-                    ->pluck('name')
+                    ->where('roles.team_id', $team->id)
+                    ->pluck('roles.name')
                     ->toArray();
 
                 foreach ($existingRoles as $existing) {
@@ -35,6 +36,16 @@ class UpdateUserAction
                 }
 
                 $member->assignRole($role);
+            }
+        } else {
+            // Jika tidak ada role, cabut semua role di team ini
+            $existingRoles = $member->roles()
+                ->where('roles.team_id', $team->id)
+                ->pluck('roles.name')
+                ->toArray();
+
+            foreach ($existingRoles as $existing) {
+                $member->removeRole($existing);
             }
         }
     }

@@ -2,7 +2,7 @@ import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import {
     Users, UserPlus, MoreVertical, Shield, Trash2,
-    KeyRound, Mail, Check, Clock, Ban, Crown,
+    KeyRound, Mail, Crown,
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────
@@ -53,7 +53,6 @@ function Avatar({ name, size = 36 }: { name: string; size?: number }) {
         '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
     ];
     const color = colors[name.charCodeAt(0) % colors.length];
-
     return (
         <div style={{
             height: size, width: size, borderRadius: '50%',
@@ -89,212 +88,200 @@ function Badge({ children, color = 'default' }: { children: React.ReactNode; col
     );
 }
 
-// ─── Invite Modal ─────────────────────────────────────────
-function InviteModal({ onClose, teamRoles }: { onClose: () => void; teamRoles: RoleOption[] }) {
-    const { auth } = usePage().props as any;
-    const teamSlug = auth?.user?.current_team?.slug ?? '';
-
-    const { data, setData, post, processing, errors, reset } = useForm({
-        email: '',
-        role: 'member',
-    });
-
-    function submit() {
-        post(buildUrl('/invitations', teamSlug), {
-            onSuccess: () => { reset(); onClose(); },
-        });
-    }
-
+// ─── Modal Base ───────────────────────────────────────────
+function Modal({ onClose, children, maxWidth = '440px' }: { onClose: () => void; children: React.ReactNode; maxWidth?: string }) {
     return (
         <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
             <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }} onClick={onClose} />
             <div style={{
-                position: 'relative', width: '100%', maxWidth: '440px',
+                position: 'relative', width: '100%', maxWidth,
                 borderRadius: '16px', backgroundColor: 'var(--card)',
                 border: '1px solid var(--border)',
                 boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
                 padding: '24px',
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                    <div style={{
-                        height: '40px', width: '40px', borderRadius: '10px',
-                        backgroundColor: 'hsl(214 100% 95%)', color: 'hsl(214 100% 40%)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                        <UserPlus size={18} />
-                    </div>
-                    <div>
-                        <h2 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: 'var(--card-foreground)' }}>
-                            Undang Anggota
-                        </h2>
-                        <p style={{ fontSize: '13px', color: 'var(--muted-foreground)', margin: 0 }}>
-                            Kirim undangan via email
-                        </p>
-                    </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {/* Email */}
-                    <div>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--card-foreground)', marginBottom: '6px' }}>
-                            Email <span style={{ color: 'var(--destructive)' }}>*</span>
-                        </label>
-                        <input
-                            type="email"
-                            value={data.email}
-                            onChange={e => setData('email', e.target.value)}
-                            placeholder="user@example.com"
-                            autoFocus
-                            style={{
-                                width: '100%', height: '38px', borderRadius: '8px',
-                                border: errors.email ? '1px solid var(--destructive)' : '1px solid var(--border)',
-                                backgroundColor: 'var(--background)',
-                                color: 'var(--foreground)', fontSize: '14px',
-                                padding: '0 12px', outline: 'none', boxSizing: 'border-box',
-                            }}
-                        />
-                        {errors.email && <p style={{ fontSize: '12px', color: 'var(--destructive)', marginTop: '4px' }}>{errors.email}</p>}
-                    </div>
-
-                    {/* Role */}
-                    <div>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--card-foreground)', marginBottom: '6px' }}>
-                            Role <span style={{ color: 'var(--destructive)' }}>*</span>
-                        </label>
-                        <select
-                            value={data.role}
-                            onChange={e => setData('role', e.target.value)}
-                            style={{
-                                width: '100%', height: '38px', borderRadius: '8px',
-                                border: '1px solid var(--border)',
-                                backgroundColor: 'var(--background)',
-                                color: 'var(--foreground)', fontSize: '14px',
-                                padding: '0 12px', outline: 'none',
-                            }}
-                        >
-                            {teamRoles.map(r => (
-                                <option key={r.value} value={r.value}>{r.label}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Actions */}
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
-                        <button
-                            onClick={onClose}
-                            disabled={processing}
-                            style={{
-                                height: '38px', padding: '0 16px', borderRadius: '8px',
-                                border: '1px solid var(--border)', backgroundColor: 'transparent',
-                                color: 'var(--foreground)', fontSize: '14px', cursor: 'pointer',
-                            }}
-                        >
-                            Batal
-                        </button>
-                        <button
-                            onClick={submit}
-                            disabled={processing}
-                            style={{
-                                height: '38px', padding: '0 20px', borderRadius: '8px',
-                                border: 'none', backgroundColor: 'var(--primary)',
-                                color: 'var(--primary-foreground)', fontSize: '14px',
-                                fontWeight: 500, cursor: 'pointer', display: 'flex',
-                                alignItems: 'center', gap: '6px',
-                                opacity: processing ? 0.6 : 1,
-                            }}
-                        >
-                            <Mail size={14} />
-                            {processing ? 'Mengirim...' : 'Kirim Undangan'}
-                        </button>
-                    </div>
-                </div>
+                {children}
             </div>
         </div>
     );
 }
 
-// ─── Reset Password Modal ─────────────────────────────────
-function ResetPasswordModal({ member, teamSlug, onClose }: { member: Member; teamSlug: string; onClose: () => void }) {
-    const { data, setData, post, processing, errors, reset } = useForm({
-        password: '',
-        password_confirmation: '',
-    });
+// ─── Input ────────────────────────────────────────────────
+function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+    return (
+        <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--card-foreground)', marginBottom: '6px' }}>
+                {label} <span style={{ color: 'var(--destructive)' }}>*</span>
+            </label>
+            {children}
+            {error && <p style={{ fontSize: '12px', color: 'var(--destructive)', marginTop: '4px' }}>{error}</p>}
+        </div>
+    );
+}
+
+const inputStyle = (hasError?: boolean): React.CSSProperties => ({
+    width: '100%', height: '38px', borderRadius: '8px',
+    border: hasError ? '1px solid var(--destructive)' : '1px solid var(--border)',
+    backgroundColor: 'var(--background)', color: 'var(--foreground)',
+    fontSize: '14px', padding: '0 12px', outline: 'none', boxSizing: 'border-box',
+});
+
+const selectStyle: React.CSSProperties = {
+    width: '100%', height: '38px', borderRadius: '8px',
+    border: '1px solid var(--border)', backgroundColor: 'var(--background)',
+    color: 'var(--foreground)', fontSize: '14px', padding: '0 12px', outline: 'none',
+};
+
+// ─── Invite Modal ─────────────────────────────────────────
+function InviteModal({ onClose, teamRoles }: { onClose: () => void; teamRoles: RoleOption[] }) {
+    const { auth } = usePage().props as any;
+    const teamSlug = auth?.user?.current_team?.slug ?? '';
+    const { data, setData, post, processing, errors, reset } = useForm({ email: '', role: 'member' });
 
     function submit() {
-        post(buildUrl(`/users/${member.id}/set-password`, teamSlug), {
-            onSuccess: () => { reset(); onClose(); },
-        });
+        post(buildUrl('/invitations', teamSlug), { onSuccess: () => { reset(); onClose(); } });
     }
 
     return (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-            <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }} onClick={onClose} />
-            <div style={{
-                position: 'relative', width: '100%', maxWidth: '400px',
-                borderRadius: '16px', backgroundColor: 'var(--card)',
-                border: '1px solid var(--border)',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
-                padding: '24px',
-            }}>
-                <div style={{ marginBottom: '20px' }}>
-                    <h2 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 4px', color: 'var(--card-foreground)' }}>
-                        Reset Password
-                    </h2>
+        <Modal onClose={onClose}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                <div style={{ height: '40px', width: '40px', borderRadius: '10px', backgroundColor: 'hsl(214 100% 95%)', color: 'hsl(214 100% 40%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <UserPlus size={18} />
+                </div>
+                <div>
+                    <h2 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: 'var(--card-foreground)' }}>Undang Anggota</h2>
+                    <p style={{ fontSize: '13px', color: 'var(--muted-foreground)', margin: 0 }}>Kirim undangan via email</p>
+                </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <Field label="Email" error={errors.email}>
+                    <input type="email" value={data.email} onChange={e => setData('email', e.target.value)}
+                        placeholder="user@example.com" autoFocus style={inputStyle(!!errors.email)} />
+                </Field>
+                <Field label="Role">
+                    <select value={data.role} onChange={e => setData('role', e.target.value)} style={selectStyle}>
+                        {teamRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                </Field>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                    <button onClick={onClose} disabled={processing} style={{ height: '38px', padding: '0 16px', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'transparent', color: 'var(--foreground)', fontSize: '14px', cursor: 'pointer' }}>
+                        Batal
+                    </button>
+                    <button onClick={submit} disabled={processing} style={{ height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: processing ? 0.6 : 1 }}>
+                        <Mail size={14} />
+                        {processing ? 'Mengirim...' : 'Kirim Undangan'}
+                    </button>
+                </div>
+            </div>
+        </Modal>
+    );
+}
+
+// ─── Edit Role Modal ──────────────────────────────────────
+function EditRoleModal({ member, teamSlug, teamRoles, availableRoles, onClose }: {
+    member: Member; teamSlug: string; teamRoles: RoleOption[]; availableRoles: RoleOption[]; onClose: () => void;
+}) {
+    const { data, setData, put, processing, errors } = useForm({
+        team_role: member.team_role ?? 'member',
+        role: member.roles[0] ?? '',
+    });
+
+    function submit() {
+        put(buildUrl(`/users/${member.id}`, teamSlug), { onSuccess: onClose });
+    }
+
+    return (
+        <Modal onClose={onClose} maxWidth="420px">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                <div style={{ height: '40px', width: '40px', borderRadius: '10px', backgroundColor: 'hsl(214 100% 95%)', color: 'hsl(214 100% 40%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Shield size={18} />
+                </div>
+                <div>
+                    <h2 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: 'var(--card-foreground)' }}>Edit Role</h2>
+                    <p style={{ fontSize: '13px', color: 'var(--muted-foreground)', margin: 0 }}>
+                        Ubah role untuk <strong>{member.name}</strong>
+                    </p>
+                </div>
+            </div>
+
+            {/* Member info */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '10px', backgroundColor: 'var(--muted)', marginBottom: '20px' }}>
+                <Avatar name={member.name} size={32} />
+                <div>
+                    <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--card-foreground)' }}>{member.name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>{member.email}</div>
+                </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <Field label="Role Tim" error={errors.team_role}>
+                    <select value={data.team_role} onChange={e => setData('team_role', e.target.value)} style={selectStyle}>
+                        {teamRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                </Field>
+
+                {availableRoles.length > 0 && (
+                    <Field label="Role Sistem" error={errors.role}>
+                        <select value={data.role} onChange={e => setData('role', e.target.value)} style={selectStyle}>
+                            <option value="">-- Tidak ada --</option>
+                            {availableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                        </select>
+                    </Field>
+                )}
+
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                    <button onClick={onClose} disabled={processing} style={{ height: '38px', padding: '0 16px', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'transparent', color: 'var(--foreground)', fontSize: '14px', cursor: 'pointer' }}>
+                        Batal
+                    </button>
+                    <button onClick={submit} disabled={processing} style={{ height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', opacity: processing ? 0.6 : 1 }}>
+                        {processing ? 'Menyimpan...' : 'Simpan'}
+                    </button>
+                </div>
+            </div>
+        </Modal>
+    );
+}
+
+// ─── Reset Password Modal ─────────────────────────────────
+function ResetPasswordModal({ member, teamSlug, onClose }: { member: Member; teamSlug: string; onClose: () => void }) {
+    const { data, setData, post, processing, errors, reset } = useForm({ password: '', password_confirmation: '' });
+
+    function submit() {
+        post(buildUrl(`/users/${member.id}/set-password`, teamSlug), { onSuccess: () => { reset(); onClose(); } });
+    }
+
+    return (
+        <Modal onClose={onClose} maxWidth="400px">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                <div style={{ height: '40px', width: '40px', borderRadius: '10px', backgroundColor: 'hsl(43 96% 92%)', color: 'hsl(43 96% 30%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <KeyRound size={18} />
+                </div>
+                <div>
+                    <h2 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 4px', color: 'var(--card-foreground)' }}>Reset Password</h2>
                     <p style={{ fontSize: '13px', color: 'var(--muted-foreground)', margin: 0 }}>
                         Reset password untuk <strong>{member.name}</strong>
                     </p>
                 </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '6px', color: 'var(--card-foreground)' }}>
-                            Password Baru *
-                        </label>
-                        <input
-                            type="password"
-                            value={data.password}
-                            onChange={e => setData('password', e.target.value)}
-                            placeholder="Minimal 8 karakter"
-                            autoFocus
-                            style={{
-                                width: '100%', height: '38px', borderRadius: '8px',
-                                border: errors.password ? '1px solid var(--destructive)' : '1px solid var(--border)',
-                                backgroundColor: 'var(--background)', color: 'var(--foreground)',
-                                fontSize: '14px', padding: '0 12px', outline: 'none', boxSizing: 'border-box',
-                            }}
-                        />
-                        {errors.password && <p style={{ fontSize: '12px', color: 'var(--destructive)', marginTop: '4px' }}>{errors.password}</p>}
-                    </div>
-                    <div>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '6px', color: 'var(--card-foreground)' }}>
-                            Konfirmasi Password *
-                        </label>
-                        <input
-                            type="password"
-                            value={data.password_confirmation}
-                            onChange={e => setData('password_confirmation', e.target.value)}
-                            placeholder="Ulangi password"
-                            style={{
-                                width: '100%', height: '38px', borderRadius: '8px',
-                                border: '1px solid var(--border)',
-                                backgroundColor: 'var(--background)', color: 'var(--foreground)',
-                                fontSize: '14px', padding: '0 12px', outline: 'none', boxSizing: 'border-box',
-                            }}
-                        />
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
-                        <button onClick={onClose} disabled={processing}
-                            style={{ height: '38px', padding: '0 16px', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'transparent', color: 'var(--foreground)', fontSize: '14px', cursor: 'pointer' }}>
-                            Batal
-                        </button>
-                        <button onClick={submit} disabled={processing}
-                            style={{ height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', opacity: processing ? 0.6 : 1 }}>
-                            {processing ? 'Menyimpan...' : 'Reset Password'}
-                        </button>
-                    </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <Field label="Password Baru" error={errors.password}>
+                    <input type="password" value={data.password} onChange={e => setData('password', e.target.value)}
+                        placeholder="Minimal 8 karakter" autoFocus style={inputStyle(!!errors.password)} />
+                </Field>
+                <Field label="Konfirmasi Password">
+                    <input type="password" value={data.password_confirmation} onChange={e => setData('password_confirmation', e.target.value)}
+                        placeholder="Ulangi password" style={inputStyle()} />
+                </Field>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                    <button onClick={onClose} disabled={processing} style={{ height: '38px', padding: '0 16px', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'transparent', color: 'var(--foreground)', fontSize: '14px', cursor: 'pointer' }}>
+                        Batal
+                    </button>
+                    <button onClick={submit} disabled={processing} style={{ height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)', fontSize: '14px', fontWeight: 500, cursor: 'pointer', opacity: processing ? 0.6 : 1 }}>
+                        {processing ? 'Menyimpan...' : 'Reset Password'}
+                    </button>
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 }
 
@@ -310,42 +297,32 @@ function ConfirmDeleteModal({ member, teamSlug, onClose }: { member: Member; tea
     }
 
     return (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-            <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }} onClick={onClose} />
-            <div style={{
-                position: 'relative', width: '100%', maxWidth: '380px',
-                borderRadius: '16px', backgroundColor: 'var(--card)',
-                border: '1px solid var(--border)', boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
-                padding: '24px',
-            }}>
-                <div style={{ marginBottom: '16px' }}>
-                    <h2 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 6px', color: 'var(--card-foreground)' }}>Hapus Anggota</h2>
-                    <p style={{ fontSize: '13px', color: 'var(--muted-foreground)', margin: 0 }}>
-                        Apakah Anda yakin ingin menghapus <strong>{member.name}</strong> dari tim?
-                        Tindakan ini tidak dapat dibatalkan.
-                    </p>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                    <button onClick={onClose} disabled={deleting}
-                        style={{ height: '38px', padding: '0 16px', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'transparent', color: 'var(--foreground)', fontSize: '14px', cursor: 'pointer' }}>
-                        Batal
-                    </button>
-                    <button onClick={confirm} disabled={deleting}
-                        style={{ height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', backgroundColor: 'hsl(0 72% 50%)', color: '#fff', fontSize: '14px', fontWeight: 500, cursor: 'pointer', opacity: deleting ? 0.6 : 1 }}>
-                        {deleting ? 'Menghapus...' : 'Ya, Hapus'}
-                    </button>
-                </div>
+        <Modal onClose={onClose} maxWidth="380px">
+            <div style={{ marginBottom: '16px' }}>
+                <h2 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 6px', color: 'var(--card-foreground)' }}>Hapus Anggota</h2>
+                <p style={{ fontSize: '13px', color: 'var(--muted-foreground)', margin: 0 }}>
+                    Apakah Anda yakin ingin menghapus <strong>{member.name}</strong> dari tim? Tindakan ini tidak dapat dibatalkan.
+                </p>
             </div>
-        </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                <button onClick={onClose} disabled={deleting} style={{ height: '38px', padding: '0 16px', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'transparent', color: 'var(--foreground)', fontSize: '14px', cursor: 'pointer' }}>
+                    Batal
+                </button>
+                <button onClick={confirm} disabled={deleting} style={{ height: '38px', padding: '0 20px', borderRadius: '8px', border: 'none', backgroundColor: 'hsl(0 72% 50%)', color: '#fff', fontSize: '14px', fontWeight: 500, cursor: 'pointer', opacity: deleting ? 0.6 : 1 }}>
+                    {deleting ? 'Menghapus...' : 'Ya, Hapus'}
+                </button>
+            </div>
+        </Modal>
     );
 }
 
 // ─── Member Row Actions ───────────────────────────────────
-function MemberActions({ member, teamSlug, canUpdate, canDelete, authUserId }: {
-    member: Member; teamSlug: string; canUpdate: boolean; canDelete: boolean; authUserId: number;
+function MemberActions({ member, teamSlug, teamRoles, availableRoles, canUpdate, canDelete, authUserId }: {
+    member: Member; teamSlug: string; teamRoles: RoleOption[]; availableRoles: RoleOption[];
+    canUpdate: boolean; canDelete: boolean; authUserId: number;
 }) {
     const [open, setOpen] = useState(false);
-    const [modal, setModal] = useState<'reset' | 'delete' | null>(null);
+    const [modal, setModal] = useState<'edit' | 'reset' | 'delete' | null>(null);
     const isSelf = member.id === authUserId;
 
     if ((!canUpdate && !canDelete) || member.is_owner) return null;
@@ -372,16 +349,15 @@ function MemberActions({ member, teamSlug, canUpdate, canDelete, authUserId }: {
                             boxShadow: '0 4px 20px rgba(0,0,0,0.1)', overflow: 'hidden', padding: '4px',
                         }}>
                             {canUpdate && (
-                                <a
-                                    href={buildUrl(`/users/${member.id}/edit`, teamSlug)}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', fontSize: '13px', color: 'var(--popover-foreground)', textDecoration: 'none', borderRadius: '6px' }}
+                                <button
+                                    onClick={() => { setOpen(false); setModal('edit'); }}
+                                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', fontSize: '13px', color: 'var(--popover-foreground)', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '6px', textAlign: 'left' }}
                                     onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--accent)')}
                                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                    onClick={() => setOpen(false)}
                                 >
                                     <Shield size={13} />
                                     Edit Role
-                                </a>
+                                </button>
                             )}
                             {canUpdate && (
                                 <button
@@ -413,6 +389,9 @@ function MemberActions({ member, teamSlug, canUpdate, canDelete, authUserId }: {
                 )}
             </div>
 
+            {modal === 'edit' && (
+                <EditRoleModal member={member} teamSlug={teamSlug} teamRoles={teamRoles} availableRoles={availableRoles} onClose={() => setModal(null)} />
+            )}
             {modal === 'reset' && (
                 <ResetPasswordModal member={member} teamSlug={teamSlug} onClose={() => setModal(null)} />
             )}
@@ -449,13 +428,7 @@ export default function UsersIndex({ members, availableRoles, teamRoles, canInvi
                     {canInvite && (
                         <button
                             onClick={() => setShowInvite(true)}
-                            style={{
-                                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                                height: '38px', padding: '0 18px', borderRadius: '10px',
-                                border: 'none', backgroundColor: 'var(--primary)',
-                                color: 'var(--primary-foreground)', fontSize: '14px',
-                                fontWeight: 500, cursor: 'pointer',
-                            }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', height: '38px', padding: '0 18px', borderRadius: '10px', border: 'none', backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
                         >
                             <UserPlus size={16} />
                             Undang Anggota
@@ -498,71 +471,44 @@ export default function UsersIndex({ members, availableRoles, teamRoles, canInvi
                                     return (
                                         <tr
                                             key={member.id}
-                                            style={{
-                                                borderBottom: !isLast ? '1px solid var(--border)' : 'none',
-                                                transition: 'background-color 0.1s',
-                                            }}
+                                            style={{ borderBottom: !isLast ? '1px solid var(--border)' : 'none', transition: 'background-color 0.1s' }}
                                             onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--accent)')}
                                             onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                                         >
-                                            {/* Anggota */}
-                                            <td style={{
-                                                padding: '14px 16px',
-                                                ...(isLast ? { borderBottomLeftRadius: '12px' } : {}),
-                                            }}>
+                                            <td style={{ padding: '14px 16px', ...(isLast ? { borderBottomLeftRadius: '12px' } : {}) }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                                     <Avatar name={member.name} />
                                                     <div>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                            <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--card-foreground)' }}>
-                                                                {member.name}
-                                                            </span>
-                                                            {member.is_owner && (
-                                                                <Crown size={12} style={{ color: '#f59e0b' }} />
-                                                            )}
+                                                            <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--card-foreground)' }}>{member.name}</span>
+                                                            {member.is_owner && <Crown size={12} style={{ color: '#f59e0b' }} />}
                                                         </div>
-                                                        <span style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>
-                                                            {member.email}
-                                                        </span>
+                                                        <span style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>{member.email}</span>
                                                     </div>
                                                 </div>
                                             </td>
-
-                                            {/* Role Tim */}
                                             <td style={{ padding: '14px 16px' }}>
                                                 <Badge color={member.is_owner ? 'amber' : 'default'}>
                                                     {member.team_role_label ?? '-'}
                                                 </Badge>
                                             </td>
-
-                                            {/* Role Sistem */}
                                             <td style={{ padding: '14px 16px' }}>
                                                 <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                                                     {member.roles.length > 0
-                                                        ? member.roles.map(r => (
-                                                            <Badge key={r} color="blue">{r}</Badge>
-                                                        ))
+                                                        ? member.roles.map(r => <Badge key={r} color="blue">{r}</Badge>)
                                                         : <span style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>-</span>
                                                     }
                                                 </div>
                                             </td>
-
-                                            {/* Bergabung */}
                                             <td style={{ padding: '14px 16px' }}>
-                                                <span style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>
-                                                    {formatDate(member.joined_at)}
-                                                </span>
+                                                <span style={{ fontSize: '13px', color: 'var(--muted-foreground)' }}>{formatDate(member.joined_at)}</span>
                                             </td>
-
-                                            {/* Actions */}
-                                            <td style={{
-                                                padding: '14px 16px',
-                                                textAlign: 'right',
-                                                ...(isLast ? { borderBottomRightRadius: '12px' } : {}),
-                                            }}>
+                                            <td style={{ padding: '14px 16px', textAlign: 'right', ...(isLast ? { borderBottomRightRadius: '12px' } : {}) }}>
                                                 <MemberActions
                                                     member={member}
                                                     teamSlug={teamSlug}
+                                                    teamRoles={teamRoles}
+                                                    availableRoles={availableRoles}
                                                     canUpdate={canUpdate}
                                                     canDelete={canDelete}
                                                     authUserId={authUserId}
