@@ -91,27 +91,27 @@ Route::prefix('{current_team}')
             Route::get('/', [RoleController::class, 'index'])->name('index')
                 ->middleware(EnsureTeamPermission::class.':role.view');
 
-            // Static — SEBELUM wildcard {role}
+            // Static suffix SEBELUM wildcard {roleId}
             Route::get('/create', [RoleController::class, 'create'])->name('create')
                 ->middleware(EnsureTeamPermission::class.':role.create');
 
             Route::post('/', [RoleController::class, 'store'])->name('store')
                 ->middleware(EnsureTeamPermission::class.':role.create');
 
-            Route::get('/{role}/edit', [RoleController::class, 'edit'])->name('edit')
+            Route::get('/{roleId}/edit', [RoleController::class, 'edit'])->name('edit')
                 ->middleware(EnsureTeamPermission::class.':role.update');
 
-            Route::post('/{role}/permissions', [RoleController::class, 'syncPermissions'])->name('sync-permissions')
+            Route::post('/{roleId}/permissions', [RoleController::class, 'syncPermissions'])->name('sync-permissions')
                 ->middleware(EnsureTeamPermission::class.':permission.assign');
 
-            Route::put('/{role}', [RoleController::class, 'update'])->name('update')
+            Route::put('/{roleId}', [RoleController::class, 'update'])->name('update')
                 ->middleware(EnsureTeamPermission::class.':role.update');
 
-            Route::delete('/{role}', [RoleController::class, 'destroy'])->name('destroy')
+            Route::delete('/{roleId}', [RoleController::class, 'destroy'])->name('destroy')
                 ->middleware(EnsureTeamPermission::class.':role.delete');
 
             // Wildcard — HARUS paling bawah
-            Route::get('/{role}', [RoleController::class, 'show'])->name('show')
+            Route::get('/{roleId}', [RoleController::class, 'show'])->name('show')
                 ->middleware(EnsureTeamPermission::class.':role.view');
         });
 

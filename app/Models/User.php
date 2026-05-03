@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -21,7 +22,7 @@ class User extends Authenticatable
 
     /**
      * Get all accessible menus for the user on their current team.
-     * Owner bypasses all permission checks.
+     * Owner bypasses most permission checks.
      *
      * @return \Illuminate\Support\Collection<int, Menu>
      */
@@ -33,13 +34,28 @@ class User extends Authenticatable
             return collect();
         }
 
+        $isDeveloper = $this->hasDeveloperRole();
+
         // Owner bypasses — gets all active root menus with children
         if ($this->ownsTeam($team)) {
             return Menu::with('children.permissions')
                 ->whereNull('parent_id')
                 ->where('is_active', true)
                 ->orderBy('sort_order')
-                ->get();
+                ->get()
+                ->map(function (Menu $menu) use ($isDeveloper) {
+                    $menu->setRelation(
+                        'children',
+                        $menu->children
+                            ->reject(fn (Menu $child) => ! $isDeveloper && $this->isDeveloperOnlyMenu($child))
+                            ->values(),
+                    );
+
+                    return $menu;
+                })
+                ->reject(fn (Menu $menu) => ! $isDeveloper && $this->isDeveloperOnlyMenu($menu))
+                ->filter(fn (Menu $menu) => $menu->children->isNotEmpty() || $menu->route !== null)
+                ->values();
         }
 
         // Get all permissions for this user on this team
@@ -58,7 +74,19 @@ class User extends Authenticatable
             ->orWhereDoesntHave('permissions') // menus with no permission req. are public
             ->orderBy('sort_order')
             ->get()
-            ->filter(fn ($menu) => $menu->children->isNotEmpty() || $menu->route !== null);
+            ->map(function (Menu $menu) use ($isDeveloper) {
+                $menu->setRelation(
+                    'children',
+                    $menu->children
+                        ->reject(fn (Menu $child) => ! $isDeveloper && $this->isDeveloperOnlyMenu($child))
+                        ->values(),
+                );
+
+                return $menu;
+            })
+            ->reject(fn (Menu $menu) => ! $isDeveloper && $this->isDeveloperOnlyMenu($menu))
+            ->filter(fn ($menu) => $menu->children->isNotEmpty() || $menu->route !== null)
+            ->values();
     }
 
     /**
@@ -71,12 +99,49 @@ class User extends Authenticatable
             return false;
         }
 
+        if ($this->isDeveloperOnlyPermission($permission)) {
+            return $this->hasDeveloperRole();
+        }
+
         if ($this->ownsTeam($team)) {
             return true;
         }
 
         setPermissionsTeamId($team->id);
         return $this->hasPermissionTo($permission);
+    }
+
+    public function hasDeveloperRole(): bool
+    {
+        $roleTable = config('permission.table_names.roles');
+        $modelRoleTable = config('permission.table_names.model_has_roles');
+        $teamKey = config('permission.column_names.team_foreign_key') ?: 'team_id';
+        $modelKey = config('permission.column_names.model_morph_key') ?: 'model_id';
+        $rolePivotKey = config('permission.column_names.role_pivot_key') ?: 'role_id';
+
+        return DB::table($modelRoleTable)
+            ->join($roleTable, "{$roleTable}.id", '=', "{$modelRoleTable}.{$rolePivotKey}")
+            ->where("{$modelRoleTable}.{$modelKey}", $this->getKey())
+            ->where("{$modelRoleTable}.model_type", static::class)
+            ->whereNull("{$modelRoleTable}.{$teamKey}")
+            ->whereNull("{$roleTable}.team_id")
+            ->where("{$roleTable}.guard_name", 'web')
+            ->where("{$roleTable}.name", 'developer')
+            ->exists();
+    }
+
+    private function isDeveloperOnlyMenu(Menu $menu): bool
+    {
+        return in_array($menu->route, [
+            'roles.index',
+            'menus.index',
+        ], true);
+    }
+
+    private function isDeveloperOnlyPermission(string $permission): bool
+    {
+        return str_starts_with($permission, 'role.')
+            || str_starts_with($permission, 'permission.');
     }
 
     /**

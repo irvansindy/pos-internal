@@ -55,6 +55,7 @@ class MenuSeeder extends Seeder
                         'route' => 'roles.index',
                         'icon' => 'Shield',
                         'sort_order' => 3,
+                        // Developer-only. Owner bypass is explicitly blocked in User::accessibleMenus().
                         'permissions' => ['role.view'],
                     ],
                     [
@@ -63,6 +64,7 @@ class MenuSeeder extends Seeder
                         'route' => 'menus.index',
                         'icon' => 'Menu',
                         'sort_order' => 4,
+                        // Developer-only. Owner bypass is explicitly blocked in User::accessibleMenus().
                         'permissions' => ['role.update'],
                     ],
                 ],

@@ -12,11 +12,24 @@ function Toaster({ ...props }: ToasterProps) {
             theme={appearance}
             className="toaster group"
             position="bottom-right"
+            toastOptions={{
+                style: {
+                    background: '#ffffff',
+                    color: '#000000',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                },
+            }}
             style={
                 {
-                    '--normal-bg': 'var(--popover)',
-                    '--normal-text': 'var(--popover-foreground)',
-                    '--normal-border': 'var(--border)',
+                    '--normal-bg': '#ffffff',
+                    '--normal-text': '#000000',
+                    '--normal-border': '#e5e7eb',
+                    bottom: '20px',
+                    right: '20px',
+                    top: 'auto',
+                    left: 'auto',
                 } as React.CSSProperties
             }
             {...props}

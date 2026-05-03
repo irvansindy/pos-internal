@@ -141,7 +141,9 @@ class UserController extends Controller
             roleName: $validated['role'] ?? null,
         );
 
-        return back()->with('success', "User \"{$user->name}\" berhasil diperbarui.");
+        Inertia::flash('toast', ['type' => 'success', 'message' => "User \"{$user->name}\" berhasil diperbarui."]);
+
+        return back();
     }
 
     public function destroy(Request $request): RedirectResponse
@@ -151,18 +153,22 @@ class UserController extends Controller
         $team     = $authUser->currentTeam;
 
         if ($user->id === $authUser->id) {
-            return back()->with('error', 'Anda tidak dapat menghapus diri sendiri.');
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Anda tidak dapat menghapus diri sendiri.']);
+            return back();
         }
 
         if ($user->ownsTeam($team)) {
-            return back()->with('error', 'Owner tim tidak dapat dihapus dari tim.');
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Owner tim tidak dapat dihapus dari tim.']);
+            return back();
         }
 
         abort_unless($user->belongsToTeam($team), 404);
 
         $this->removeUser->execute($team, $user);
 
-        return back()->with('success', "User \"{$user->name}\" berhasil dihapus dari tim.");
+        Inertia::flash('toast', ['type' => 'success', 'message' => "User \"{$user->name}\" berhasil dihapus dari tim."]);
+
+        return back();
     }
 
     public function resetUserPassword(Request $request): RedirectResponse
@@ -181,7 +187,9 @@ class UserController extends Controller
 
         $this->resetPassword->execute($user, $validated['password']);
 
-        return back()->with('success', "Password user \"{$user->name}\" berhasil direset.");
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Password user \"{$user->name}\" berhasil direset."]);
+
+        return back();
     }
 
     // ── INVITATIONS ───────────────────────────────────────
@@ -224,7 +232,9 @@ class UserController extends Controller
             inviter: $request->user(),
         );
 
-        return back()->with('success', "Undangan berhasil dikirim ke {$request->validated('email')}.");
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Undangan berhasil dikirim ke {$request->validated('email')}." ]);
+
+        return back();
     }
 
     public function cancelInvitation(Request $request, TeamInvitation $invitation): RedirectResponse
@@ -233,7 +243,9 @@ class UserController extends Controller
 
         $invitation->delete();
 
-        return back()->with('success', 'Undangan berhasil dibatalkan.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Undangan berhasil dibatalkan.']);
+
+        return back();
     }
 
     public function resendInvitation(Request $request, TeamInvitation $invitation): RedirectResponse
@@ -242,7 +254,9 @@ class UserController extends Controller
 
         $invitation->update(['expires_at' => now()->addDays(7)]);
 
-        return back()->with('success', 'Undangan berhasil dikirim ulang.');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Undangan berhasil dikirim ulang.']);
+
+        return back();
     }
 
     public function acceptInvitation(Request $request, TeamInvitation $invitation): RedirectResponse
@@ -255,20 +269,24 @@ class UserController extends Controller
         }
 
         if ($invitation->email !== $user->email) {
-            return back()->with('error', 'Undangan ini bukan untuk akun Anda.');
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Undangan ini bukan untuk akun Anda.']);
+            return back();
         }
 
         if ($invitation->isExpired()) {
-            return back()->with('error', 'Undangan ini sudah kedaluwarsa.');
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Undangan ini sudah kedaluwarsa.']);
+            return back();
         }
 
         if ($invitation->isAccepted()) {
-            return back()->with('info', 'Anda sudah bergabung dengan tim ini.');
+            Inertia::flash('toast', ['type' => 'info', 'message' => 'Anda sudah bergabung dengan tim ini.']);
+            return back();
         }
 
         $this->acceptInvitation->execute($invitation, $user);
 
-        return redirect(url("/{$invitation->team->slug}/dashboard"))
-            ->with('success', "Selamat datang di tim \"{$invitation->team->name}\"!");
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Selamat datang di tim \"{$invitation->team->name}\"!"]);
+
+        return redirect(url("/{$invitation->team->slug}/dashboard"));
     }
 }
