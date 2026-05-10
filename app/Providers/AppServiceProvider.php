@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use App\Models\User;
+use App\Models\Product;
+use App\Models\ProductCategory;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -29,6 +31,8 @@ class AppServiceProvider extends ServiceProvider
         // Ensure explicit route model binding for 'user' parameter so
         // controller type-hints reliably receive a User instance.
         Route::bind('user', fn ($value) => User::findOrFail($value));
+        Route::bind('product', fn ($value) => Product::findOrFail($value));
+        Route::bind('productCategory', fn ($value) => ProductCategory::findOrFail($value));
     }
 
     /**

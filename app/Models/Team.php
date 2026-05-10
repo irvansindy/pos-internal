@@ -82,6 +82,36 @@ class Team extends Model
     }
 
     /**
+     * Get all menus for this team.
+     *
+     * @return HasMany<Menu, $this>
+     */
+    public function menus(): HasMany
+    {
+        return $this->hasMany(Menu::class);
+    }
+
+    /**
+     * Get all products for this team.
+     *
+     * @return HasMany<Product, $this>
+     */
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class);
+    }
+
+    /**
+     * Get all product categories for this team.
+     *
+     * @return HasMany<ProductCategory, $this>
+     */
+    public function productCategories(): HasMany
+    {
+        return $this->hasMany(ProductCategory::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

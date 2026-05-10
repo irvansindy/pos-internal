@@ -92,7 +92,7 @@ Route::prefix('{current_team}')
                 ->middleware(EnsureTeamPermission::class.':role.view');
 
             // Static suffix SEBELUM wildcard {roleId}
-            Route::get('/create', [RoleController::class, 'create'])->name('create')
+            Route::post('/create', [RoleController::class, 'create'])->name('create')
                 ->middleware(EnsureTeamPermission::class.':role.create');
 
             Route::post('/', [RoleController::class, 'store'])->name('store')
@@ -116,73 +116,80 @@ Route::prefix('{current_team}')
         });
 
         // ── PERMISSIONS ───────────────────────────────────
-        // Route::get('permissions', [PermissionController::class, 'index'])->name('permissions.index')
-        //     ->middleware(EnsureTeamPermission::class.':permission.view');
+        Route::get('permissions', [PermissionController::class, 'index'])->name('permissions.index')
+            ->middleware(EnsureTeamPermission::class.':permission.view');
 
-        // // ── MENUS ─────────────────────────────────────────
-        // Route::prefix('menus')->name('menus.')->middleware(EnsureTeamPermission::class.':role.update')->group(function () {
-        //     Route::get('/', [MenuController::class, 'index'])->name('index');
-        //     Route::post('/sync', [MenuController::class, 'sync'])->name('sync');
-        // });
+        // ── MENUS ─────────────────────────────────────────
+        Route::prefix('menus')->name('menus.')->middleware(EnsureTeamPermission::class.':role.update')->group(function () {
+            Route::get('/', [MenuController::class, 'index'])->name('index');
+            Route::post('/', [MenuController::class, 'store'])->name('store');
+            Route::put('/{menuId}', [MenuController::class, 'update'])->name('update');
+            Route::delete('/{menuId}', [MenuController::class, 'destroy'])->name('destroy');
+            Route::post('/sync', [MenuController::class, 'sync'])->name('sync');
+        });
 
-        // // ── PRODUCTS ──────────────────────────────────────
-        // Route::prefix('products')->name('products.')->group(function () {
+        // ── PRODUCTS ──────────────────────────────────────
+        Route::prefix('products')->name('products.')->group(function () {
 
-        //     Route::get('/', [ProductController::class, 'index'])->name('index')
-        //         ->middleware(EnsureTeamPermission::class.':product.view');
+            Route::get('/', [ProductController::class, 'index'])->name('index')
+                ->middleware(EnsureTeamPermission::class.':product.view');
 
-        //     Route::get('/create', [ProductController::class, 'create'])->name('create')
-        //         ->middleware(EnsureTeamPermission::class.':product.create');
+            Route::get('/create', [ProductController::class, 'create'])->name('create')
+                ->middleware(EnsureTeamPermission::class.':product.create');
 
-        //     Route::post('/', [ProductController::class, 'store'])->name('store')
-        //         ->middleware(EnsureTeamPermission::class.':product.create');
+            Route::post('/', [ProductController::class, 'store'])->name('store')
+                ->middleware(EnsureTeamPermission::class.':product.create');
 
-        //     Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit')
-        //         ->middleware(EnsureTeamPermission::class.':product.update');
+            Route::get('/{productId}/edit', [ProductController::class, 'edit'])->name('edit')
+                ->middleware(EnsureTeamPermission::class.':product.update');
 
-        //     Route::put('/{product}', [ProductController::class, 'update'])->name('update')
-        //         ->middleware(EnsureTeamPermission::class.':product.update');
+            Route::put('/{productId}', [ProductController::class, 'update'])->name('update')
+                ->middleware(EnsureTeamPermission::class.':product.update');
 
-        //     Route::delete('/{product}', [ProductController::class, 'destroy'])->name('destroy')
-        //         ->middleware(EnsureTeamPermission::class.':product.delete');
+            Route::delete('/{productId}', [ProductController::class, 'destroy'])->name('destroy')
+                ->middleware(EnsureTeamPermission::class.':product.delete');
 
-        //     Route::get('/{product}', [ProductController::class, 'show'])->name('show')
-        //         ->middleware(EnsureTeamPermission::class.':product.view');
-        // });
+            // Wildcard — HARUS paling bawah
+            Route::get('/{productId}', [ProductController::class, 'show'])->name('show')
+                ->middleware(EnsureTeamPermission::class.':product.view');
+        });
 
-        // // ── PRODUCT CATEGORIES ────────────────────────────
-        // Route::prefix('product-categories')->name('product-categories.')->group(function () {
-        //     Route::get('/', [ProductCategoryController::class, 'index'])->name('index')
-        //         ->middleware(EnsureTeamPermission::class.':product.category.view');
-        //     Route::post('/', [ProductCategoryController::class, 'store'])->name('store')
-        //         ->middleware(EnsureTeamPermission::class.':product.category.create');
-        //     Route::put('/{category}', [ProductCategoryController::class, 'update'])->name('update')
-        //         ->middleware(EnsureTeamPermission::class.':product.category.update');
-        //     Route::delete('/{category}', [ProductCategoryController::class, 'destroy'])->name('destroy')
-        //         ->middleware(EnsureTeamPermission::class.':product.category.delete');
-        // });
+        // ── PRODUCT CATEGORIES ────────────────────────────
+        Route::prefix('product-categories')->name('product-categories.')->group(function () {
+            Route::get('/', [ProductCategoryController::class, 'index'])->name('index')
+                ->middleware(EnsureTeamPermission::class.':product-category.view');
 
-        // // ── PRODUCT STOCKS ────────────────────────────────
-        // Route::prefix('product-stocks')->name('product-stocks.')->group(function () {
+            Route::post('/', [ProductCategoryController::class, 'store'])->name('store')
+                ->middleware(EnsureTeamPermission::class.':product-category.create');
 
-        //     Route::get('/', [ProductStockController::class, 'index'])->name('index')
-        //         ->middleware(EnsureTeamPermission::class.':product.stock.view');
+            Route::put('/{productCategoryId}', [ProductCategoryController::class, 'update'])->name('update')
+                ->middleware(EnsureTeamPermission::class.':product-category.update');
 
-        //     Route::post('/{product}/adjust', [ProductStockController::class, 'adjust'])->name('adjust')
-        //         ->middleware(EnsureTeamPermission::class.':product.stock.adjust');
+            Route::delete('/{productCategoryId}', [ProductCategoryController::class, 'destroy'])->name('destroy')
+                ->middleware(EnsureTeamPermission::class.':product-category.delete');
+        });
 
-        //     Route::get('/{product}/history', [ProductStockController::class, 'history'])->name('history')
-        //         ->middleware(EnsureTeamPermission::class.':product.stock.view');
-        // });
+        // ── PRODUCT STOCKS ────────────────────────────────
+        Route::prefix('product-stocks')->name('product-stocks.')->group(function () {
 
-        // // ── POS / KASIR ───────────────────────────────────
-        // Route::prefix('pos')->name('pos.')->middleware(EnsureTeamPermission::class.':transaction.create')->group(function () {
-        //     Route::get('/', [PosController::class, 'index'])->name('index');
-        //     Route::get('/products/search', [PosController::class, 'searchProducts'])->name('products.search');
-        //     Route::post('/voucher/validate', [PosController::class, 'validateVoucher'])->name('voucher.validate');
-        //     Route::post('/transaction', [PosController::class, 'createTransaction'])->name('transaction.create');
-        //     Route::post('/transaction/{transaction}/payment', [PosController::class, 'processPayment'])->name('transaction.payment');
-        // });
+            Route::get('/', [ProductStockController::class, 'index'])->name('index')
+                ->middleware(EnsureTeamPermission::class.':product.stock.view');
+
+            Route::post('/{product}/adjust', [ProductStockController::class, 'adjust'])->name('adjust')
+                ->middleware(EnsureTeamPermission::class.':product.stock.adjust');
+
+            Route::get('/{product}/history', [ProductStockController::class, 'history'])->name('history')
+                ->middleware(EnsureTeamPermission::class.':product.stock.view');
+        });
+
+        // ── POS / KASIR ───────────────────────────────────
+        Route::prefix('pos')->name('pos.')->middleware(EnsureTeamPermission::class.':transaction.create')->group(function () {
+            Route::get('/', [PosController::class, 'index'])->name('index');
+            Route::get('/products/search', [PosController::class, 'searchProducts'])->name('products.search');
+            Route::post('/voucher/validate', [PosController::class, 'validateVoucher'])->name('voucher.validate');
+            Route::post('/transaction', [PosController::class, 'createTransaction'])->name('transaction.create');
+            Route::post('/transaction/{transaction}/payment', [PosController::class, 'processPayment'])->name('transaction.payment');
+        });
 
         // // ── TRANSACTIONS ──────────────────────────────────
         // Route::prefix('transactions')->name('transactions.')->group(function () {
