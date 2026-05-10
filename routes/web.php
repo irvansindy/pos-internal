@@ -143,6 +143,9 @@ Route::prefix('{current_team}')
             Route::get('/{productId}/edit', [ProductController::class, 'edit'])->name('edit')
                 ->middleware(EnsureTeamPermission::class.':product.update');
 
+            Route::get('/{productId}/history', [ProductController::class, 'history'])->name('history')
+                ->middleware(EnsureTeamPermission::class.':product.view');
+
             Route::put('/{productId}', [ProductController::class, 'update'])->name('update')
                 ->middleware(EnsureTeamPermission::class.':product.update');
 
@@ -161,6 +164,9 @@ Route::prefix('{current_team}')
 
             Route::post('/', [ProductCategoryController::class, 'store'])->name('store')
                 ->middleware(EnsureTeamPermission::class.':product-category.create');
+
+            Route::get('/{productCategoryId}/history', [ProductCategoryController::class, 'history'])->name('history')
+                ->middleware(EnsureTeamPermission::class.':product-category.view');
 
             Route::put('/{productCategoryId}', [ProductCategoryController::class, 'update'])->name('update')
                 ->middleware(EnsureTeamPermission::class.':product-category.update');

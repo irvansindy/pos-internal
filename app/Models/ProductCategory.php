@@ -28,4 +28,10 @@ class ProductCategory extends Model
     {
         return $this->hasMany(Product::class, 'category_id');
     }
+
+    public function activityLogs(): HasMany
+    {
+        return $this->hasMany(ProductActivityLog::class, 'subject_id')
+            ->where('subject_type', self::class);
+    }
 }

@@ -41,4 +41,10 @@ class Product extends Model
     {
         return $this->hasMany(ProductStockMovement::class);
     }
+
+    public function activityLogs(): HasMany
+    {
+        return $this->hasMany(ProductActivityLog::class, 'subject_id')
+            ->where('subject_type', self::class);
+    }
 }

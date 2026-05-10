@@ -1,10 +1,11 @@
-import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import {
     AlertCircle,
     ChevronDown,
     ChevronUp,
     Edit2,
     FolderOpen,
+    History,
     Plus,
     Search,
     Trash2,
@@ -18,6 +19,19 @@ interface ProductCategory {
     description: string | null;
     is_active: boolean;
     products_count: number;
+    activity_logs_count?: number;
+}
+
+interface ProductCategoryActivity {
+    id: number;
+    action: 'created' | 'updated' | 'deleted';
+    subject_name: string | null;
+    note: string | null;
+    created_at: string;
+    user?: {
+        id: number;
+        name: string;
+    } | null;
 }
 
 interface PaginatedCategories {
@@ -30,6 +44,7 @@ interface PaginatedCategories {
 
 interface Props {
     categories: PaginatedCategories;
+    recentActivity: ProductCategoryActivity[];
     teamSlug: string;
     canCreate: boolean;
     canUpdate: boolean;
@@ -48,9 +63,44 @@ function getSortValue(
     category: ProductCategory,
     key: SortKey,
 ): string | number {
-    if (key === 'name') return category.name;
-    if (key === 'products_count') return category.products_count;
+    if (key === 'name') {
+        return category.name;
+    }
+
+    if (key === 'products_count') {
+        return category.products_count;
+    }
+
     return category.name;
+}
+
+function activityLabel(action: ProductCategoryActivity['action']): string {
+    return {
+        created: 'Dibuat',
+        updated: 'Diperbarui',
+        deleted: 'Dihapus',
+    }[action];
+}
+
+function activityColor(
+    action: ProductCategoryActivity['action'],
+): 'blue' | 'green' | 'red' {
+    if (action === 'created') {
+        return 'green';
+    }
+
+    if (action === 'deleted') {
+        return 'red';
+    }
+
+    return 'blue';
+}
+
+function formatDate(value: string): string {
+    return new Intl.DateTimeFormat('id-ID', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+    }).format(new Date(value));
 }
 
 // ─── Badge Component ──────────────────────────────────────
@@ -697,6 +747,7 @@ function DeleteCategoryModal({
 // ─── Main Page ────────────────────────────────────────────
 export default function ProductCategoriesIndex({
     categories: initialCategories,
+    recentActivity,
     teamSlug,
     canCreate,
     canUpdate,
@@ -713,6 +764,7 @@ export default function ProductCategoriesIndex({
 
     const filteredCategories = useMemo(() => {
         const keyword = search.trim().toLowerCase();
+
         return initialCategories.data.filter((c) =>
             keyword
                 ? c.name.toLowerCase().includes(keyword) ||
@@ -726,6 +778,7 @@ export default function ProductCategoriesIndex({
             const aVal = getSortValue(a, sortKey);
             const bVal = getSortValue(b, sortKey);
             const compare = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+
             return sortDirection === 'asc' ? compare : -compare;
         });
     }, [filteredCategories, sortKey, sortDirection]);
@@ -733,8 +786,10 @@ export default function ProductCategoriesIndex({
     function toggleSort(key: SortKey) {
         if (sortKey === key) {
             setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+
             return;
         }
+
         setSortKey(key);
         setSortDirection('asc');
     }
@@ -1101,6 +1156,29 @@ export default function ProductCategoriesIndex({
                                                         gap: '8px',
                                                     }}
                                                 >
+                                                    <Link
+                                                        href={buildUrl(
+                                                            `/product-categories/${category.id}/history`,
+                                                            teamSlug,
+                                                        )}
+                                                        style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            cursor: 'pointer',
+                                                            color: 'var(--muted-foreground)',
+                                                            padding: '4px',
+                                                            display: 'flex',
+                                                            alignItems:
+                                                                'center',
+                                                            textDecoration:
+                                                                'none',
+                                                            transition:
+                                                                'opacity 0.2s',
+                                                        }}
+                                                        title="Riwayat"
+                                                    >
+                                                        <History size={16} />
+                                                    </Link>
                                                     {canUpdate && (
                                                         <button
                                                             onClick={() =>
@@ -1258,6 +1336,101 @@ export default function ProductCategoriesIndex({
                         </div>
                     </div>
                 )}
+
+                <div
+                    style={{
+                        borderRadius: '12px',
+                        border: '1px solid var(--border)',
+                        backgroundColor: 'var(--card)',
+                        overflow: 'hidden',
+                    }}
+                >
+                    <div
+                        style={{
+                            padding: '16px',
+                            borderBottom: '1px solid var(--border)',
+                        }}
+                    >
+                        <h2
+                            style={{
+                                margin: 0,
+                                fontSize: '15px',
+                                fontWeight: 700,
+                            }}
+                        >
+                            Riwayat Perubahan Kategori
+                        </h2>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {recentActivity.length === 0 ? (
+                            <div
+                                style={{
+                                    padding: '24px 16px',
+                                    color: 'var(--muted-foreground)',
+                                    fontSize: '13px',
+                                }}
+                            >
+                                Belum ada riwayat perubahan kategori.
+                            </div>
+                        ) : (
+                            recentActivity.map((activity) => (
+                                <div
+                                    key={activity.id}
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        gap: '16px',
+                                        padding: '12px 16px',
+                                        borderBottom: '1px solid var(--border)',
+                                    }}
+                                >
+                                    <div>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                            }}
+                                        >
+                                            <Badge
+                                                color={activityColor(
+                                                    activity.action,
+                                                )}
+                                            >
+                                                {activityLabel(activity.action)}
+                                            </Badge>
+                                            <strong>
+                                                {activity.subject_name ??
+                                                    'Kategori'}
+                                            </strong>
+                                        </div>
+                                        <div
+                                            style={{
+                                                marginTop: '4px',
+                                                color: 'var(--muted-foreground)',
+                                                fontSize: '12px',
+                                            }}
+                                        >
+                                            {activity.note ?? '-'}
+                                            {activity.user?.name
+                                                ? ` oleh ${activity.user.name}`
+                                                : ''}
+                                        </div>
+                                    </div>
+                                    <div
+                                        style={{
+                                            color: 'var(--muted-foreground)',
+                                            fontSize: '12px',
+                                            whiteSpace: 'nowrap',
+                                        }}
+                                    >
+                                        {formatDate(activity.created_at)}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Modals */}

@@ -1,5 +1,15 @@
-import { Head, router, useForm } from '@inertiajs/react';
-import { AlertCircle, ChevronDown, ChevronUp, Edit2, Package, Plus, Search, Trash2 } from 'lucide-react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import {
+    AlertCircle,
+    ChevronDown,
+    ChevronUp,
+    Edit2,
+    History,
+    Package,
+    Plus,
+    Search,
+    Trash2,
+} from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 
 // ─── Types ───────────────────────────────────────────────
@@ -20,6 +30,19 @@ interface Product {
     is_active: boolean;
     category_id: number | null;
     category?: Category;
+    activity_logs_count?: number;
+}
+
+interface ProductActivity {
+    id: number;
+    action: 'created' | 'updated' | 'deleted';
+    subject_name: string | null;
+    note: string | null;
+    created_at: string;
+    user?: {
+        id: number;
+        name: string;
+    } | null;
 }
 
 interface PaginatedProducts {
@@ -32,6 +55,7 @@ interface PaginatedProducts {
 
 interface Props {
     products: PaginatedProducts;
+    recentActivity: ProductActivity[];
     categories: Category[];
     teamSlug: string;
     canCreate: boolean;
@@ -48,8 +72,12 @@ function buildUrl(path: string, teamSlug: string): string {
 }
 
 function formatCurrency(value: string | null): string {
-    if (!value) return 'Rp 0';
+    if (!value) {
+        return 'Rp 0';
+    }
+
     const num = parseFloat(value);
+
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
@@ -59,17 +87,67 @@ function formatCurrency(value: string | null): string {
 }
 
 function getSortValue(product: Product, key: SortKey): string | number {
-    if (key === 'name') return product.name;
-    if (key === 'sku') return product.sku;
-    if (key === 'price') return parseFloat(product.price);
-    if (key === 'stock') return product.stock;
+    if (key === 'name') {
+        return product.name;
+    }
+
+    if (key === 'sku') {
+        return product.sku;
+    }
+
+    if (key === 'price') {
+        return parseFloat(product.price);
+    }
+
+    if (key === 'stock') {
+        return product.stock;
+    }
+
     return product.name;
 }
 
-function getStockBadgeColor(stock: number, minStock: number): 'blue' | 'amber' | 'green' | 'red' {
-    if (stock <= 0) return 'red';
-    if (stock <= minStock) return 'amber';
+function getStockBadgeColor(
+    stock: number,
+    minStock: number,
+): 'blue' | 'amber' | 'green' | 'red' {
+    if (stock <= 0) {
+        return 'red';
+    }
+
+    if (stock <= minStock) {
+        return 'amber';
+    }
+
     return 'green';
+}
+
+function activityLabel(action: ProductActivity['action']): string {
+    return {
+        created: 'Dibuat',
+        updated: 'Diperbarui',
+        deleted: 'Dihapus',
+    }[action];
+}
+
+function activityColor(
+    action: ProductActivity['action'],
+): 'blue' | 'green' | 'red' {
+    if (action === 'created') {
+        return 'green';
+    }
+
+    if (action === 'deleted') {
+        return 'red';
+    }
+
+    return 'blue';
+}
+
+function formatDate(value: string): string {
+    return new Intl.DateTimeFormat('id-ID', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+    }).format(new Date(value));
 }
 
 // ─── Badge Component ──────────────────────────────────────
@@ -306,7 +384,13 @@ function CreateProductModal({
                     gap: '16px',
                 }}
             >
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '12px',
+                    }}
+                >
                     <Field label="SKU" error={(errors as any).sku}>
                         <input
                             type="text"
@@ -363,7 +447,13 @@ function CreateProductModal({
                     </select>
                 </Field>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '12px',
+                    }}
+                >
                     <Field label="Harga" error={(errors as any).price}>
                         <input
                             type="number"
@@ -386,7 +476,13 @@ function CreateProductModal({
                     </Field>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '12px',
+                    }}
+                >
                     <Field label="Stok" error={(errors as any).stock}>
                         <input
                             type="number"
@@ -401,7 +497,9 @@ function CreateProductModal({
                         <input
                             type="number"
                             value={data.min_stock}
-                            onChange={(e) => setData('min_stock', e.target.value)}
+                            onChange={(e) =>
+                                setData('min_stock', e.target.value)
+                            }
                             placeholder="0"
                             style={inputStyle()}
                             disabled={processing}
@@ -517,7 +615,9 @@ function EditProductModal({
 
     function submit() {
         if (product) {
-            put(buildUrl(`/products/${product.id}`, teamSlug), { onSuccess: onClose });
+            put(buildUrl(`/products/${product.id}`, teamSlug), {
+                onSuccess: onClose,
+            });
         }
     }
 
@@ -575,7 +675,13 @@ function EditProductModal({
                     gap: '16px',
                 }}
             >
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '12px',
+                    }}
+                >
                     <Field label="SKU" error={(errors as any).sku}>
                         <input
                             type="text"
@@ -628,7 +734,13 @@ function EditProductModal({
                     </select>
                 </Field>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '12px',
+                    }}
+                >
                     <Field label="Harga" error={(errors as any).price}>
                         <input
                             type="number"
@@ -649,7 +761,13 @@ function EditProductModal({
                     </Field>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '12px',
+                    }}
+                >
                     <Field label="Stok" error={(errors as any).stock}>
                         <input
                             type="number"
@@ -663,7 +781,9 @@ function EditProductModal({
                         <input
                             type="number"
                             value={data.min_stock}
-                            onChange={(e) => setData('min_stock', e.target.value)}
+                            onChange={(e) =>
+                                setData('min_stock', e.target.value)
+                            }
                             style={inputStyle()}
                             disabled={processing}
                         />
@@ -821,7 +941,8 @@ function DeleteProductModal({
                     color: 'var(--card-foreground)',
                 }}
             >
-                Apakah Anda yakin ingin menghapus produk <strong>{product?.name}</strong>?
+                Apakah Anda yakin ingin menghapus produk{' '}
+                <strong>{product?.name}</strong>?
             </p>
             <div
                 style={{
@@ -870,6 +991,7 @@ function DeleteProductModal({
 // ─── Main Page ────────────────────────────────────────────
 export default function ProductsIndex({
     products: initialProducts,
+    recentActivity,
     categories,
     teamSlug,
     canCreate,
@@ -885,9 +1007,11 @@ export default function ProductsIndex({
 
     const filteredProducts = useMemo(() => {
         const keyword = search.trim().toLowerCase();
+
         return initialProducts.data.filter((p) =>
             keyword
-                ? p.name.toLowerCase().includes(keyword) || p.sku.toLowerCase().includes(keyword)
+                ? p.name.toLowerCase().includes(keyword) ||
+                  p.sku.toLowerCase().includes(keyword)
                 : true,
         );
     }, [initialProducts.data, search]);
@@ -897,6 +1021,7 @@ export default function ProductsIndex({
             const aVal = getSortValue(a, sortKey);
             const bVal = getSortValue(b, sortKey);
             const compare = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+
             return sortDirection === 'asc' ? compare : -compare;
         });
     }, [filteredProducts, sortKey, sortDirection]);
@@ -904,8 +1029,10 @@ export default function ProductsIndex({
     function toggleSort(key: SortKey) {
         if (sortKey === key) {
             setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+
             return;
         }
+
         setSortKey(key);
         setSortDirection('asc');
     }
@@ -1024,7 +1151,11 @@ export default function ProductsIndex({
                             }}
                         >
                             <thead>
-                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                <tr
+                                    style={{
+                                        borderBottom: '1px solid var(--border)',
+                                    }}
+                                >
                                     <th
                                         style={{
                                             padding: '12px 16px',
@@ -1039,7 +1170,13 @@ export default function ProductsIndex({
                                         }}
                                         onClick={() => toggleSort('name')}
                                     >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                            }}
+                                        >
                                             Produk
                                             {sortKey === 'name' &&
                                                 (sortDirection === 'asc' ? (
@@ -1063,7 +1200,13 @@ export default function ProductsIndex({
                                         }}
                                         onClick={() => toggleSort('sku')}
                                     >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                            }}
+                                        >
                                             SKU
                                             {sortKey === 'sku' &&
                                                 (sortDirection === 'asc' ? (
@@ -1073,7 +1216,17 @@ export default function ProductsIndex({
                                                 ))}
                                         </div>
                                     </th>
-                                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, color: 'var(--muted-foreground)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    <th
+                                        style={{
+                                            padding: '12px 16px',
+                                            textAlign: 'left',
+                                            fontWeight: 600,
+                                            color: 'var(--muted-foreground)',
+                                            fontSize: '11px',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em',
+                                        }}
+                                    >
                                         Kategori
                                     </th>
                                     <th
@@ -1172,7 +1325,9 @@ export default function ProductsIndex({
                                 {sortedProducts.length === 0 ? (
                                     <tr>
                                         <td
-                                            colSpan={canUpdate || canDelete ? 8 : 7}
+                                            colSpan={
+                                                canUpdate || canDelete ? 8 : 7
+                                            }
                                             style={{
                                                 padding: '48px 16px',
                                                 textAlign: 'center',
@@ -1187,13 +1342,27 @@ export default function ProductsIndex({
                                                     gap: '8px',
                                                 }}
                                             >
-                                                <Package size={32} opacity={0.5} />
+                                                <Package
+                                                    size={32}
+                                                    opacity={0.5}
+                                                />
                                                 <div>
-                                                    <p style={{ margin: '0 0 4px 0', fontWeight: 500 }}>
+                                                    <p
+                                                        style={{
+                                                            margin: '0 0 4px 0',
+                                                            fontWeight: 500,
+                                                        }}
+                                                    >
                                                         Tidak ada produk
                                                     </p>
-                                                    <p style={{ margin: 0, fontSize: '12px' }}>
-                                                        Mulai dengan menambahkan produk pertama Anda
+                                                    <p
+                                                        style={{
+                                                            margin: 0,
+                                                            fontSize: '12px',
+                                                        }}
+                                                    >
+                                                        Mulai dengan menambahkan
+                                                        produk pertama Anda
                                                     </p>
                                                 </div>
                                             </div>
@@ -1204,15 +1373,21 @@ export default function ProductsIndex({
                                         <tr
                                             key={product.id}
                                             style={{
-                                                borderBottom: '1px solid var(--border)',
-                                                transition: 'background-color 0.2s',
+                                                borderBottom:
+                                                    '1px solid var(--border)',
+                                                transition:
+                                                    'background-color 0.2s',
                                             }}
                                             onMouseEnter={(e) => {
-                                                (e.currentTarget as HTMLTableRowElement).style.backgroundColor =
+                                                (
+                                                    e.currentTarget as HTMLTableRowElement
+                                                ).style.backgroundColor =
                                                     'var(--muted)';
                                             }}
                                             onMouseLeave={(e) => {
-                                                (e.currentTarget as HTMLTableRowElement).style.backgroundColor =
+                                                (
+                                                    e.currentTarget as HTMLTableRowElement
+                                                ).style.backgroundColor =
                                                     'transparent';
                                             }}
                                         >
@@ -1223,18 +1398,30 @@ export default function ProductsIndex({
                                                 }}
                                             >
                                                 <div>
-                                                    <div style={{ fontWeight: 500, marginBottom: '2px' }}>
+                                                    <div
+                                                        style={{
+                                                            fontWeight: 500,
+                                                            marginBottom: '2px',
+                                                        }}
+                                                    >
                                                         {product.name}
                                                     </div>
                                                     {product.description && (
                                                         <div
                                                             style={{
-                                                                fontSize: '11px',
+                                                                fontSize:
+                                                                    '11px',
                                                                 color: 'var(--muted-foreground)',
                                                             }}
                                                         >
-                                                            {product.description.substring(0, 50)}
-                                                            {product.description.length > 50 ? '...' : ''}
+                                                            {product.description.substring(
+                                                                0,
+                                                                50,
+                                                            )}
+                                                            {product.description
+                                                                .length > 50
+                                                                ? '...'
+                                                                : ''}
                                                         </div>
                                                     )}
                                                 </div>
@@ -1249,7 +1436,12 @@ export default function ProductsIndex({
                                             >
                                                 {product.sku}
                                             </td>
-                                            <td style={{ padding: '12px 16px', color: 'var(--card-foreground)' }}>
+                                            <td
+                                                style={{
+                                                    padding: '12px 16px',
+                                                    color: 'var(--card-foreground)',
+                                                }}
+                                            >
                                                 {product.category?.name || '-'}
                                             </td>
                                             <td
@@ -1262,16 +1454,37 @@ export default function ProductsIndex({
                                             >
                                                 {formatCurrency(product.price)}
                                             </td>
-                                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                            <td
+                                                style={{
+                                                    padding: '12px 16px',
+                                                    textAlign: 'right',
+                                                }}
+                                            >
                                                 <Badge
-                                                    color={getStockBadgeColor(product.stock, product.min_stock)}
+                                                    color={getStockBadgeColor(
+                                                        product.stock,
+                                                        product.min_stock,
+                                                    )}
                                                 >
                                                     {product.stock} unit
                                                 </Badge>
                                             </td>
-                                            <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                                                <Badge color={product.is_active ? 'green' : 'default'}>
-                                                    {product.is_active ? 'Aktif' : 'Nonaktif'}
+                                            <td
+                                                style={{
+                                                    padding: '12px 16px',
+                                                    textAlign: 'center',
+                                                }}
+                                            >
+                                                <Badge
+                                                    color={
+                                                        product.is_active
+                                                            ? 'green'
+                                                            : 'default'
+                                                    }
+                                                >
+                                                    {product.is_active
+                                                        ? 'Aktif'
+                                                        : 'Nonaktif'}
                                                 </Badge>
                                             </td>
                                             {(canUpdate || canDelete) && (
@@ -1280,29 +1493,68 @@ export default function ProductsIndex({
                                                         padding: '12px 16px',
                                                         textAlign: 'center',
                                                         display: 'flex',
-                                                        justifyContent: 'center',
+                                                        justifyContent:
+                                                            'center',
                                                         gap: '8px',
                                                     }}
                                                 >
+                                                    <Link
+                                                        href={buildUrl(
+                                                            `/products/${product.id}/history`,
+                                                            teamSlug,
+                                                        )}
+                                                        style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            cursor: 'pointer',
+                                                            color: 'var(--muted-foreground)',
+                                                            padding: '4px',
+                                                            display: 'flex',
+                                                            alignItems:
+                                                                'center',
+                                                            textDecoration:
+                                                                'none',
+                                                            transition:
+                                                                'opacity 0.2s',
+                                                        }}
+                                                        title="Riwayat"
+                                                    >
+                                                        <History size={16} />
+                                                    </Link>
                                                     {canUpdate && (
                                                         <button
-                                                            onClick={() => setEditingProduct(product)}
+                                                            onClick={() =>
+                                                                setEditingProduct(
+                                                                    product,
+                                                                )
+                                                            }
                                                             style={{
-                                                                background: 'none',
+                                                                background:
+                                                                    'none',
                                                                 border: 'none',
                                                                 cursor: 'pointer',
                                                                 color: 'hsl(214 100% 50%)',
                                                                 padding: '4px',
                                                                 display: 'flex',
-                                                                alignItems: 'center',
-                                                                transition: 'opacity 0.2s',
+                                                                alignItems:
+                                                                    'center',
+                                                                transition:
+                                                                    'opacity 0.2s',
                                                             }}
-                                                            onMouseEnter={(e) => {
-                                                                (e.currentTarget as HTMLButtonElement).style.opacity =
+                                                            onMouseEnter={(
+                                                                e,
+                                                            ) => {
+                                                                (
+                                                                    e.currentTarget as HTMLButtonElement
+                                                                ).style.opacity =
                                                                     '0.7';
                                                             }}
-                                                            onMouseLeave={(e) => {
-                                                                (e.currentTarget as HTMLButtonElement).style.opacity =
+                                                            onMouseLeave={(
+                                                                e,
+                                                            ) => {
+                                                                (
+                                                                    e.currentTarget as HTMLButtonElement
+                                                                ).style.opacity =
                                                                     '1';
                                                             }}
                                                         >
@@ -1311,23 +1563,38 @@ export default function ProductsIndex({
                                                     )}
                                                     {canDelete && (
                                                         <button
-                                                            onClick={() => setDeleteProduct(product)}
+                                                            onClick={() =>
+                                                                setDeleteProduct(
+                                                                    product,
+                                                                )
+                                                            }
                                                             style={{
-                                                                background: 'none',
+                                                                background:
+                                                                    'none',
                                                                 border: 'none',
                                                                 cursor: 'pointer',
                                                                 color: 'hsl(0 72% 50%)',
                                                                 padding: '4px',
                                                                 display: 'flex',
-                                                                alignItems: 'center',
-                                                                transition: 'opacity 0.2s',
+                                                                alignItems:
+                                                                    'center',
+                                                                transition:
+                                                                    'opacity 0.2s',
                                                             }}
-                                                            onMouseEnter={(e) => {
-                                                                (e.currentTarget as HTMLButtonElement).style.opacity =
+                                                            onMouseEnter={(
+                                                                e,
+                                                            ) => {
+                                                                (
+                                                                    e.currentTarget as HTMLButtonElement
+                                                                ).style.opacity =
                                                                     '0.7';
                                                             }}
-                                                            onMouseLeave={(e) => {
-                                                                (e.currentTarget as HTMLButtonElement).style.opacity =
+                                                            onMouseLeave={(
+                                                                e,
+                                                            ) => {
+                                                                (
+                                                                    e.currentTarget as HTMLButtonElement
+                                                                ).style.opacity =
                                                                     '1';
                                                             }}
                                                         >
@@ -1355,7 +1622,8 @@ export default function ProductsIndex({
                         }}
                     >
                         <div style={{ color: 'var(--muted-foreground)' }}>
-                            Menampilkan {initialProducts.data.length} dari {initialProducts.total} produk
+                            Menampilkan {initialProducts.data.length} dari{' '}
+                            {initialProducts.total} produk
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
                             {initialProducts.current_page > 1 && (
@@ -1382,7 +1650,8 @@ export default function ProductsIndex({
                                     ← Sebelumnya
                                 </button>
                             )}
-                            {initialProducts.current_page < initialProducts.last_page && (
+                            {initialProducts.current_page <
+                                initialProducts.last_page && (
                                 <button
                                     onClick={() =>
                                         router.get(
@@ -1409,6 +1678,101 @@ export default function ProductsIndex({
                         </div>
                     </div>
                 )}
+
+                <div
+                    style={{
+                        borderRadius: '12px',
+                        border: '1px solid var(--border)',
+                        backgroundColor: 'var(--card)',
+                        overflow: 'hidden',
+                    }}
+                >
+                    <div
+                        style={{
+                            padding: '16px',
+                            borderBottom: '1px solid var(--border)',
+                        }}
+                    >
+                        <h2
+                            style={{
+                                margin: 0,
+                                fontSize: '15px',
+                                fontWeight: 700,
+                            }}
+                        >
+                            Riwayat Perubahan Produk
+                        </h2>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {recentActivity.length === 0 ? (
+                            <div
+                                style={{
+                                    padding: '24px 16px',
+                                    color: 'var(--muted-foreground)',
+                                    fontSize: '13px',
+                                }}
+                            >
+                                Belum ada riwayat perubahan produk.
+                            </div>
+                        ) : (
+                            recentActivity.map((activity) => (
+                                <div
+                                    key={activity.id}
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        gap: '16px',
+                                        padding: '12px 16px',
+                                        borderBottom: '1px solid var(--border)',
+                                    }}
+                                >
+                                    <div>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                            }}
+                                        >
+                                            <Badge
+                                                color={activityColor(
+                                                    activity.action,
+                                                )}
+                                            >
+                                                {activityLabel(activity.action)}
+                                            </Badge>
+                                            <strong>
+                                                {activity.subject_name ??
+                                                    'Produk'}
+                                            </strong>
+                                        </div>
+                                        <div
+                                            style={{
+                                                marginTop: '4px',
+                                                color: 'var(--muted-foreground)',
+                                                fontSize: '12px',
+                                            }}
+                                        >
+                                            {activity.note ?? '-'}
+                                            {activity.user?.name
+                                                ? ` oleh ${activity.user.name}`
+                                                : ''}
+                                        </div>
+                                    </div>
+                                    <div
+                                        style={{
+                                            color: 'var(--muted-foreground)',
+                                            fontSize: '12px',
+                                            whiteSpace: 'nowrap',
+                                        }}
+                                    >
+                                        {formatDate(activity.created_at)}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Modals */}
