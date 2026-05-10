@@ -121,6 +121,16 @@ class Team extends Model
         return $this->hasMany(ProductActivityLog::class);
     }
 
+    public function vouchers(): HasMany
+    {
+        return $this->hasMany(Voucher::class);
+    }
+
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

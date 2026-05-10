@@ -47,4 +47,9 @@ class Product extends Model
         return $this->hasMany(ProductActivityLog::class, 'subject_id')
             ->where('subject_type', self::class);
     }
+
+    public function transactionItems(): HasMany
+    {
+        return $this->hasMany(TransactionItem::class);
+    }
 }
