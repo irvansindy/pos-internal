@@ -175,10 +175,10 @@ Route::prefix('{current_team}')
             Route::get('/', [ProductStockController::class, 'index'])->name('index')
                 ->middleware(EnsureTeamPermission::class.':product.stock.view');
 
-            Route::post('/{product}/adjust', [ProductStockController::class, 'adjust'])->name('adjust')
+            Route::post('/{productId}/adjust', [ProductStockController::class, 'adjust'])->name('adjust')
                 ->middleware(EnsureTeamPermission::class.':product.stock.adjust');
 
-            Route::get('/{product}/history', [ProductStockController::class, 'history'])->name('history')
+            Route::get('/{productId}/history', [ProductStockController::class, 'history'])->name('history')
                 ->middleware(EnsureTeamPermission::class.':product.stock.view');
         });
 

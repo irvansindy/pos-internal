@@ -111,6 +111,11 @@ class Team extends Model
         return $this->hasMany(ProductCategory::class);
     }
 
+    public function productStockMovements(): HasMany
+    {
+        return $this->hasMany(ProductStockMovement::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
