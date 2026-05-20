@@ -12,6 +12,17 @@ use Spatie\Permission\Models\Role;
 
 class UserSeeder extends Seeder
 {
+    /**
+     * Permission set untuk role Admin (full product-package access).
+     * Dipakai di Team A dan Team B agar DRY.
+     */
+    private const PACKAGE_PERMISSIONS = [
+        'product-package.view',
+        'product-package.create',
+        'product-package.update',
+        'product-package.delete',
+    ];
+
     public function run(): void
     {
         app()['cache']->forget('spatie.permission.cache');
@@ -20,37 +31,38 @@ class UserSeeder extends Seeder
         $developer = User::firstOrCreate(
             ['email' => 'developer@pos.test'],
             [
-                'name' => 'Developer',
-                'password' => Hash::make('password'),
-                'email_verified_at' => now(),
+                'name'               => 'Developer',
+                'password'           => Hash::make('password'),
+                'email_verified_at'  => now(),
             ]
         );
 
-        // Developer gets all setting permissions globally (team_id = null)
+        // Developer mendapat semua setting permission secara global (team_id = null)
         setPermissionsTeamId(null);
         $developerRole = Role::firstOrCreate(
             ['name' => 'developer', 'guard_name' => 'web', 'team_id' => null],
             ['label' => 'Developer', 'is_system' => true]
         );
-        $developerRole->givePermissionTo(Permission::where('module', 'setting')->pluck('name')->toArray());
+        $developerRole->givePermissionTo(
+            Permission::where('module', 'setting')->pluck('name')->toArray()
+        );
         $developer->assignRole($developerRole);
 
         // ── 2. OWNER + TEAM A ────────────────────────────────
         $owner = User::firstOrCreate(
             ['email' => 'owner@pos.test'],
             [
-                'name' => 'Owner Toko',
-                'password' => Hash::make('password'),
-                'email_verified_at' => now(),
+                'name'               => 'Owner Toko',
+                'password'           => Hash::make('password'),
+                'email_verified_at'  => now(),
             ]
         );
 
         $teamA = Team::firstOrCreate(['slug' => 'toko-utama'], [
-            'name' => 'Toko Utama',
+            'name'        => 'Toko Utama',
             'is_personal' => false,
         ]);
 
-        // Owner joins as team owner
         $teamA->members()->syncWithoutDetaching([
             $owner->id => ['role' => TeamRole::Owner->value],
         ]);
@@ -59,22 +71,33 @@ class UserSeeder extends Seeder
         // ── 3. ROLES PER TEAM A ──────────────────────────────
         setPermissionsTeamId($teamA->id);
 
+        // Admin — full access termasuk product-package
         $adminRole = Role::firstOrCreate(
             ['name' => 'admin', 'guard_name' => 'web', 'team_id' => $teamA->id],
             ['label' => 'Admin', 'is_system' => true]
         );
         $adminRole->syncPermissions([
+            // User
             'user.view', 'user.create', 'user.update', 'user.invite',
+            // Role & Permission
             'role.view', 'role.create', 'role.update', 'role.assign',
             'permission.view', 'permission.assign',
+            // Product
             'product.view', 'product.create', 'product.update', 'product.delete',
             'product.category.view', 'product.category.create', 'product.category.update', 'product.category.delete',
             'product.stock.view', 'product.stock.adjust',
-            'transaction.view', 'transaction.create', 'transaction.update', 'transaction.void', 'transaction.refund', 'transaction.return',
+            // Product Package (admin & owner)
+            ...self::PACKAGE_PERMISSIONS,
+            // Transaction
+            'transaction.view', 'transaction.create', 'transaction.update',
+            'transaction.void', 'transaction.refund', 'transaction.return',
+            // Voucher
             'voucher.view', 'voucher.create', 'voucher.update', 'voucher.delete', 'voucher.apply',
+            // Report
             'report.sales', 'report.stock', 'report.cashier', 'report.export',
         ]);
 
+        // Kasir — tidak dapat akses product-package
         $kasirRole = Role::firstOrCreate(
             ['name' => 'kasir', 'guard_name' => 'web', 'team_id' => $teamA->id],
             ['label' => 'Kasir', 'is_system' => true]
@@ -87,6 +110,7 @@ class UserSeeder extends Seeder
             'report.sales', 'report.cashier',
         ]);
 
+        // Waiter — tidak dapat akses product-package
         $waiterRole = Role::firstOrCreate(
             ['name' => 'waiter', 'guard_name' => 'web', 'team_id' => $teamA->id],
             ['label' => 'Waiter', 'is_system' => true]
@@ -99,7 +123,11 @@ class UserSeeder extends Seeder
         // ── 4. STAFF USERS ───────────────────────────────────
         $admin = User::firstOrCreate(
             ['email' => 'admin@pos.test'],
-            ['name' => 'Admin Toko', 'password' => Hash::make('password'), 'email_verified_at' => now()]
+            [
+                'name'              => 'Admin Toko',
+                'password'          => Hash::make('password'),
+                'email_verified_at' => now(),
+            ]
         );
         $teamA->members()->syncWithoutDetaching([$admin->id => ['role' => TeamRole::Admin->value]]);
         $admin->update(['current_team_id' => $teamA->id]);
@@ -107,7 +135,11 @@ class UserSeeder extends Seeder
 
         $kasir = User::firstOrCreate(
             ['email' => 'kasir@pos.test'],
-            ['name' => 'Kasir Satu', 'password' => Hash::make('password'), 'email_verified_at' => now()]
+            [
+                'name'              => 'Kasir Satu',
+                'password'          => Hash::make('password'),
+                'email_verified_at' => now(),
+            ]
         );
         $teamA->members()->syncWithoutDetaching([$kasir->id => ['role' => TeamRole::Member->value]]);
         $kasir->update(['current_team_id' => $teamA->id]);
@@ -115,7 +147,11 @@ class UserSeeder extends Seeder
 
         $waiter = User::firstOrCreate(
             ['email' => 'waiter@pos.test'],
-            ['name' => 'Waiter Satu', 'password' => Hash::make('password'), 'email_verified_at' => now()]
+            [
+                'name'              => 'Waiter Satu',
+                'password'          => Hash::make('password'),
+                'email_verified_at' => now(),
+            ]
         );
         $teamA->members()->syncWithoutDetaching([$waiter->id => ['role' => TeamRole::Member->value]]);
         $waiter->update(['current_team_id' => $teamA->id]);
@@ -123,7 +159,7 @@ class UserSeeder extends Seeder
 
         // ── 5. TEAM B (second tenant) ────────────────────────
         $teamB = Team::firstOrCreate(['slug' => 'cabang-dua'], [
-            'name' => 'Cabang Dua',
+            'name'        => 'Cabang Dua',
             'is_personal' => false,
         ]);
         $teamB->members()->syncWithoutDetaching([
@@ -131,32 +167,43 @@ class UserSeeder extends Seeder
         ]);
 
         setPermissionsTeamId($teamB->id);
+
+        // Admin Team B — termasuk product-package
         $adminRoleB = Role::firstOrCreate(
             ['name' => 'admin', 'guard_name' => 'web', 'team_id' => $teamB->id],
             ['label' => 'Admin', 'is_system' => true]
         );
         $adminRoleB->syncPermissions([
+            // User
             'user.view', 'user.create', 'user.invite',
+            // Product
             'product.view', 'product.create', 'product.update',
-            'product.category.view', 'product.stock.view', 'product.stock.adjust',
+            'product.category.view',
+            'product.stock.view', 'product.stock.adjust',
+            // Product Package (admin & owner)
+            ...self::PACKAGE_PERMISSIONS,
+            // Transaction
             'transaction.view', 'transaction.create', 'transaction.refund',
+            // Voucher
             'voucher.view', 'voucher.apply',
+            // Report
             'report.sales', 'report.cashier',
         ]);
 
-        // Admin user from team A also joins team B as Admin
+        // Admin dari Team A juga bergabung ke Team B
         $teamB->members()->syncWithoutDetaching([$admin->id => ['role' => TeamRole::Admin->value]]);
         $admin->assignRole($adminRoleB);
 
+        // ── 6. Summary ───────────────────────────────────────
         $this->command->info('✅ Users seeded');
         $this->command->table(
-            ['Email', 'Role', 'Team'],
+            ['Email', 'Role', 'Team', 'Package Access'],
             [
-                ['developer@pos.test', 'developer (global)', '-'],
-                ['owner@pos.test', 'owner', 'Toko Utama + Cabang Dua'],
-                ['admin@pos.test', 'admin', 'Toko Utama + Cabang Dua'],
-                ['kasir@pos.test', 'kasir', 'Toko Utama'],
-                ['waiter@pos.test', 'waiter', 'Toko Utama'],
+                ['developer@pos.test', 'developer (global)', '-',                        '✅ via owner bypass'],
+                ['owner@pos.test',     'owner',              'Toko Utama + Cabang Dua',  '✅ via owner bypass'],
+                ['admin@pos.test',     'admin',              'Toko Utama + Cabang Dua',  '✅'],
+                ['kasir@pos.test',     'kasir',              'Toko Utama',               '❌'],
+                ['waiter@pos.test',    'waiter',             'Toko Utama',               '❌'],
             ]
         );
     }

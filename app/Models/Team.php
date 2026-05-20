@@ -150,4 +150,9 @@ class Team extends Model
     {
         return 'slug';
     }
+
+    public function productPackages(): HasMany
+    {
+        return $this->hasMany(ProductPackage::class);
+    }
 }

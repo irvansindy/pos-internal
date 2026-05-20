@@ -18,7 +18,7 @@ use App\Http\Middleware\EnsureTeamMembership;
 use App\Http\Middleware\EnsureTeamPermission;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
-
+use App\Http\Controllers\ProductPackageController;
 // ── PUBLIC ───────────────────────────────────────────────
 Route::inertia('/', 'welcome', [
     'canRegister' => Features::enabled(Features::registration()),
@@ -186,6 +186,28 @@ Route::prefix('{current_team}')
 
             Route::get('/{productId}/history', [ProductStockController::class, 'history'])->name('history')
                 ->middleware(EnsureTeamPermission::class.':product.stock.view');
+        });
+
+        // ── PRODUCT PACKAGES ──────────────────────────────────────
+        Route::prefix('product-packages')->name('product-packages.')->group(function () {
+
+            Route::get('/', [ProductPackageController::class, 'index'])->name('index')
+                ->middleware(EnsureTeamPermission::class.':product-package.view');
+
+            Route::post('/', [ProductPackageController::class, 'store'])->name('store')
+                ->middleware(EnsureTeamPermission::class.':product-package.create');
+
+            Route::get('/{productPackageId}/history', [ProductPackageController::class, 'history'])->name('history')
+                ->middleware(EnsureTeamPermission::class.':product-package.view');
+
+            Route::put('/{productPackageId}', [ProductPackageController::class, 'update'])->name('update')
+                ->middleware(EnsureTeamPermission::class.':product-package.update');
+
+            Route::delete('/{productPackageId}', [ProductPackageController::class, 'destroy'])->name('destroy')
+                ->middleware(EnsureTeamPermission::class.':product-package.delete');
+
+            Route::get('/{productPackageId}', [ProductPackageController::class, 'show'])->name('show')
+                ->middleware(EnsureTeamPermission::class.':product-package.view');
         });
 
         // ── POS / KASIR ───────────────────────────────────
