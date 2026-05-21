@@ -111,6 +111,14 @@ class MenuSeeder extends Seeder
                         'sort_order'  => 4,
                         'permissions' => ['product-package.view'],
                     ],
+                    [
+                        'name'        => 'product-promotion',
+                        'label'       => 'Promosi Produk',
+                        'route'       => 'product-promotions.index',
+                        'icon'        => 'Tag',
+                        'permissions' => ['product-promotion.view'],
+                        'sort_order'  => 5,
+                    ],
                 ],
             ],
 

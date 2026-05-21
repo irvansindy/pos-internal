@@ -19,6 +19,7 @@ use App\Http\Middleware\EnsureTeamPermission;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\ProductPackageController;
+use App\Http\Controllers\ProductPromotionController;
 // ── PUBLIC ───────────────────────────────────────────────
 Route::inertia('/', 'welcome', [
     'canRegister' => Features::enabled(Features::registration()),
@@ -208,6 +209,26 @@ Route::prefix('{current_team}')
 
             Route::get('/{productPackageId}', [ProductPackageController::class, 'show'])->name('show')
                 ->middleware(EnsureTeamPermission::class.':product-package.view');
+        });
+
+        // ── PRODUCT PROMOTIONS ────────────────────────────────────
+        Route::prefix('product-promotions')->name('product-promotions.')->group(function () {
+
+            Route::get('/', [ProductPromotionController::class, 'index'])->name('index')
+                ->middleware(EnsureTeamPermission::class . ':product-promotion.view');
+
+            Route::post('/', [ProductPromotionController::class, 'store'])->name('store')
+                ->middleware(EnsureTeamPermission::class . ':product-promotion.create');
+
+            // Static suffix SEBELUM wildcard {productPromotionId}
+            Route::get('/{productPromotionId}/history', [ProductPromotionController::class, 'history'])->name('history')
+                ->middleware(EnsureTeamPermission::class . ':product-promotion.view');
+
+            Route::put('/{productPromotionId}', [ProductPromotionController::class, 'update'])->name('update')
+                ->middleware(EnsureTeamPermission::class . ':product-promotion.update');
+
+            Route::delete('/{productPromotionId}', [ProductPromotionController::class, 'destroy'])->name('destroy')
+                ->middleware(EnsureTeamPermission::class . ':product-promotion.delete');
         });
 
         // ── POS / KASIR ───────────────────────────────────

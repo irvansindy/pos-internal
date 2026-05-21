@@ -47,6 +47,7 @@ function buildUrl(routeName: string, teamSlug: string): string {
         'product-categories.index':`/${teamSlug}/product-categories`,
         'product-stocks.index':    `/${teamSlug}/product-stocks`,
         'product-packages.index':  `/${teamSlug}/product-packages`,
+        'product-promotions.index': `/${teamSlug}/product-promotions`,
         'pos.index':               `/${teamSlug}/pos`,
         'transactions.index':      `/${teamSlug}/transactions`,
         'transactions.refunds':    `/${teamSlug}/transactions/refunds`,

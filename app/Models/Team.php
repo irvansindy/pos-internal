@@ -155,4 +155,9 @@ class Team extends Model
     {
         return $this->hasMany(ProductPackage::class);
     }
+
+    public function productPromotions(): HasMany
+    {
+        return $this->hasMany(ProductPromotion::class);
+    }
 }
