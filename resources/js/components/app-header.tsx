@@ -6,6 +6,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs';
 import { TeamSwitcher } from '@/components/team-switcher';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import ThemeToggle from '@/components/theme-toggle';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -180,6 +181,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                     </div>
 
                     <div className="ml-auto flex items-center space-x-2">
+                        <ThemeToggle compact />
                         <div className="relative flex items-center space-x-1">
                             <Button
                                 variant="ghost"
