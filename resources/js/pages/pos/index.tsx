@@ -17,6 +17,8 @@ interface Category {
 
 interface Product {
     id: number;
+    item_id: number;
+    item_type: 'product' | 'package' | 'promotion';
     category_id: number | null;
     sku: string;
     name: string;
@@ -94,6 +96,22 @@ function paymentStatusLabel(
     }
 
     return 'Belum Bayar';
+}
+
+function itemTypeLabel(type: Product['item_type']): string {
+    if (type === 'package') {
+        return 'Paket';
+    }
+
+    if (type === 'promotion') {
+        return 'Promosi';
+    }
+
+    return 'Produk';
+}
+
+function cartItemKey(product: Product): string {
+    return `${product.item_type}:${product.item_id}`;
 }
 
 function Badge({
@@ -213,13 +231,14 @@ export default function PosIndex({
 
     function addToCart(product: Product) {
         setCart((current) => {
+            const selectedKey = cartItemKey(product);
             const existing = current.find(
-                (item) => item.product.id === product.id,
+                (item) => cartItemKey(item.product) === selectedKey,
             );
 
             if (existing) {
                 return current.map((item) =>
-                    item.product.id === product.id
+                    cartItemKey(item.product) === selectedKey
                         ? {
                               ...item,
                               quantity: Math.min(
@@ -235,11 +254,13 @@ export default function PosIndex({
         });
     }
 
-    function updateQuantity(productId: number, quantity: number) {
+    function updateQuantity(product: Product, quantity: number) {
+        const selectedKey = cartItemKey(product);
+
         setCart((current) =>
             current
                 .map((item) =>
-                    item.product.id === productId
+                    cartItemKey(item.product) === selectedKey
                         ? {
                               ...item,
                               quantity: Math.max(
@@ -253,9 +274,11 @@ export default function PosIndex({
         );
     }
 
-    function removeFromCart(productId: number) {
+    function removeFromCart(product: Product) {
+        const selectedKey = cartItemKey(product);
+
         setCart((current) =>
-            current.filter((item) => item.product.id !== productId),
+            current.filter((item) => cartItemKey(item.product) !== selectedKey),
         );
     }
 
@@ -272,7 +295,8 @@ export default function PosIndex({
                 paid_amount: paidAmount || '0',
                 note: note || null,
                 items: cart.map((item) => ({
-                    product_id: item.product.id,
+                    item_type: item.product.item_type,
+                    item_id: item.product.item_id,
                     quantity: item.quantity,
                 })),
             },
@@ -377,7 +401,7 @@ export default function PosIndex({
                                 onChange={(event) =>
                                     setSearch(event.target.value)
                                 }
-                                placeholder="Cari produk, SKU, atau kategori..."
+                                placeholder="Cari produk, paket, promosi, SKU, atau kategori..."
                                 style={{
                                     width: '100%',
                                     height: '40px',
@@ -412,7 +436,7 @@ export default function PosIndex({
                                 }}
                             >
                                 <strong style={{ fontSize: '14px' }}>
-                                    Produk Tersedia
+                                    Item Tersedia
                                 </strong>
                                 <span
                                     style={{
@@ -420,7 +444,7 @@ export default function PosIndex({
                                         fontSize: '12px',
                                     }}
                                 >
-                                    {filteredProducts.length} produk
+                                    {filteredProducts.length} item
                                 </span>
                             </div>
 
@@ -443,12 +467,12 @@ export default function PosIndex({
                                             fontSize: '13px',
                                         }}
                                     >
-                                        Produk tidak ditemukan.
+                                        Item tidak ditemukan.
                                     </div>
                                 ) : (
                                     filteredProducts.map((product) => (
                                         <button
-                                            key={product.id}
+                                            key={cartItemKey(product)}
                                             onClick={() => addToCart(product)}
                                             style={{
                                                 textAlign: 'left',
@@ -475,8 +499,11 @@ export default function PosIndex({
                                                     }}
                                                 >
                                                     <Badge color="blue">
-                                                        {product.sku}
+                                                        {itemTypeLabel(
+                                                            product.item_type,
+                                                        )}
                                                     </Badge>
+                                                    <Badge>{product.sku}</Badge>
                                                     <Badge
                                                         color={
                                                             product.stock <=
@@ -713,12 +740,12 @@ export default function PosIndex({
                                         fontSize: '13px',
                                     }}
                                 >
-                                    Pilih produk untuk memulai transaksi.
+                                    Pilih item untuk memulai transaksi.
                                 </div>
                             ) : (
                                 cart.map((item) => (
                                     <div
-                                        key={item.product.id}
+                                        key={cartItemKey(item.product)}
                                         style={{
                                             display: 'grid',
                                             gridTemplateColumns: '1fr auto',
@@ -747,6 +774,12 @@ export default function PosIndex({
                                                 {formatCurrency(
                                                     item.product.price,
                                                 )}
+                                                {' '}
+                                                <Badge color="blue">
+                                                    {itemTypeLabel(
+                                                        item.product.item_type,
+                                                    )}
+                                                </Badge>
                                             </div>
                                             <div
                                                 style={{
@@ -759,7 +792,7 @@ export default function PosIndex({
                                                 <button
                                                     onClick={() =>
                                                         updateQuantity(
-                                                            item.product.id,
+                                                            item.product,
                                                             item.quantity - 1,
                                                         )
                                                     }
@@ -779,7 +812,7 @@ export default function PosIndex({
                                                     value={item.quantity}
                                                     onChange={(event) =>
                                                         updateQuantity(
-                                                            item.product.id,
+                                                            item.product,
                                                             Number(
                                                                 event.target
                                                                     .value,
@@ -800,7 +833,7 @@ export default function PosIndex({
                                                 <button
                                                     onClick={() =>
                                                         updateQuantity(
-                                                            item.product.id,
+                                                            item.product,
                                                             item.quantity + 1,
                                                         )
                                                     }
@@ -822,7 +855,7 @@ export default function PosIndex({
                                             <button
                                                 onClick={() =>
                                                     removeFromCart(
-                                                        item.product.id,
+                                                        item.product,
                                                     )
                                                 }
                                                 style={{

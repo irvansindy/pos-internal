@@ -21,7 +21,9 @@ class CreatePosTransactionRequest extends FormRequest
             'paid_amount' => ['required', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:1000'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
+            'items.*.item_type' => ['nullable', Rule::in(['product', 'package', 'promotion'])],
+            'items.*.item_id' => ['required_without:items.*.product_id', 'integer', 'min:1'],
+            'items.*.product_id' => ['required_without:items.*.item_id', 'integer', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
         ];
     }
@@ -35,7 +37,9 @@ class CreatePosTransactionRequest extends FormRequest
             'paid_amount.numeric' => 'Jumlah bayar harus berupa angka.',
             'items.required' => 'Keranjang transaksi masih kosong.',
             'items.min' => 'Keranjang transaksi masih kosong.',
-            'items.*.product_id.required' => 'Produk transaksi wajib diisi.',
+            'items.*.item_type.in' => 'Jenis item transaksi tidak valid.',
+            'items.*.item_id.required_without' => 'Item transaksi wajib diisi.',
+            'items.*.product_id.required_without' => 'Produk transaksi wajib diisi.',
             'items.*.product_id.exists' => 'Produk transaksi tidak ditemukan.',
             'items.*.quantity.required' => 'Jumlah produk wajib diisi.',
             'items.*.quantity.integer' => 'Jumlah produk harus angka bulat.',

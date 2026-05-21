@@ -9,10 +9,14 @@ use App\Http\Requests\Pos\ProcessPaymentRequest;
 use App\Http\Requests\Pos\SearchProductsRequest;
 use App\Http\Requests\Pos\ValidateVoucherRequest;
 use App\Models\Product;
+use App\Models\ProductPackage;
+use App\Models\ProductPromotion;
 use App\Models\Transaction;
+use App\Models\TransactionItem;
 use App\Models\Voucher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -40,6 +44,23 @@ class PosController extends Controller
             ->limit(40)
             ->get(['id', 'category_id', 'sku', 'name', 'price', 'stock', 'min_stock']);
 
+        $packages = $team->productPackages()
+            ->with(['category:id,name', 'items.product:id,name,sku,stock,is_active'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->limit(40)
+            ->get(['id', 'team_id', 'category_id', 'sku', 'name', 'base_price', 'is_active']);
+
+        $promotions = $team->productPromotions()
+            ->where('is_active', true)
+            ->with([
+                'triggers.product:id,name,sku,price,stock,is_active',
+                'rewards.product:id,name,sku,stock,is_active',
+            ])
+            ->orderBy('name')
+            ->limit(40)
+            ->get(['id', 'team_id', 'name', 'type', 'is_active', 'starts_at', 'ends_at']);
+
         $recentTransactions = $team->transactions()
             ->with('cashier:id,name')
             ->latest()
@@ -58,7 +79,7 @@ class PosController extends Controller
             ]);
 
         return Inertia::render('pos/index', [
-            'products' => $products,
+            'products' => $this->formatSaleItems($products, $packages, $promotions)->take(40)->values(),
             'recentTransactions' => $recentTransactions,
             'teamSlug' => $team->slug,
             'paymentMethods' => [
@@ -90,8 +111,38 @@ class PosController extends Controller
             ->limit(30)
             ->get(['id', 'category_id', 'sku', 'name', 'price', 'stock', 'min_stock']);
 
+        $packages = ProductPackage::where('team_id', $team->id)
+            ->with(['category:id,name', 'items.product:id,name,sku,stock,is_active'])
+            ->where('is_active', true)
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('sku', 'like', "%{$search}%")
+                        ->orWhereHas('category', fn ($query) => $query->where('name', 'like', "%{$search}%"));
+                });
+            })
+            ->orderBy('name')
+            ->limit(30)
+            ->get(['id', 'team_id', 'category_id', 'sku', 'name', 'base_price', 'is_active']);
+
+        $promotions = ProductPromotion::where('team_id', $team->id)
+            ->where('is_active', true)
+            ->with([
+                'triggers.product:id,name,sku,price,stock,is_active',
+                'rewards.product:id,name,sku,stock,is_active',
+            ])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('type', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy('name')
+            ->limit(30)
+            ->get(['id', 'team_id', 'name', 'type', 'is_active', 'starts_at', 'ends_at']);
+
         return response()->json([
-            'products' => $products,
+            'products' => $this->formatSaleItems($products, $packages, $promotions)->take(30)->values(),
         ]);
     }
 
@@ -148,5 +199,125 @@ class PosController extends Controller
         Inertia::flash('success', "Pembayaran {$transaction->invoice_number} berhasil diperbarui.");
 
         return back();
+    }
+
+    private function formatSaleItems(Collection $products, Collection $packages, Collection $promotions): Collection
+    {
+        return $products
+            ->map(fn (Product $product) => $this->formatProductForPos($product))
+            ->concat($packages->map(fn (ProductPackage $package) => $this->formatPackageForPos($package)))
+            ->concat($promotions->map(fn (ProductPromotion $promotion) => $this->formatPromotionForPos($promotion)))
+            ->filter(fn (array $item) => $item['stock'] > 0)
+            ->sortBy([
+                ['item_type', 'asc'],
+                ['name', 'asc'],
+            ])
+            ->values();
+    }
+
+    private function formatProductForPos(Product $product): array
+    {
+        return [
+            'id' => $product->id,
+            'item_id' => $product->id,
+            'item_type' => TransactionItem::ITEM_TYPE_PRODUCT,
+            'category_id' => $product->category_id,
+            'sku' => $product->sku,
+            'name' => $product->name,
+            'price' => (string) $product->price,
+            'stock' => (int) $product->stock,
+            'min_stock' => (int) $product->min_stock,
+            'category' => $product->category,
+        ];
+    }
+
+    private function formatPackageForPos(ProductPackage $package): array
+    {
+        return [
+            'id' => $package->id,
+            'item_id' => $package->id,
+            'item_type' => TransactionItem::ITEM_TYPE_PACKAGE,
+            'category_id' => $package->category_id,
+            'sku' => $package->sku,
+            'name' => $package->name,
+            'price' => (string) $package->base_price,
+            'stock' => $this->availablePackageStock($package),
+            'min_stock' => 0,
+            'category' => $package->category,
+        ];
+    }
+
+    private function formatPromotionForPos(ProductPromotion $promotion): array
+    {
+        return [
+            'id' => $promotion->id,
+            'item_id' => $promotion->id,
+            'item_type' => TransactionItem::ITEM_TYPE_PROMOTION,
+            'category_id' => null,
+            'sku' => 'PROMO-'.$promotion->id,
+            'name' => $promotion->name,
+            'price' => (string) $this->promotionUnitPrice($promotion),
+            'stock' => $this->availablePromotionStock($promotion),
+            'min_stock' => 0,
+            'category' => ['id' => null, 'name' => 'Promosi'],
+        ];
+    }
+
+    private function availablePackageStock(ProductPackage $package): int
+    {
+        if ($package->items->isEmpty()) {
+            return 0;
+        }
+
+        if ($package->items->contains(fn ($item) => ! $item->product?->is_active || $item->quantity <= 0)) {
+            return 0;
+        }
+
+        return (int) $package->items
+            ->groupBy('product_id')
+            ->map(function (Collection $items) {
+                $product = $items->first()->product;
+                $quantity = $items->sum(fn ($item) => (int) $item->quantity);
+
+                return intdiv((int) $product->stock, $quantity);
+            })
+            ->min();
+    }
+
+    private function availablePromotionStock(ProductPromotion $promotion): int
+    {
+        $requirements = $promotion->triggers
+            ->map(fn ($trigger) => ['product' => $trigger->product, 'quantity' => (int) $trigger->min_quantity])
+            ->concat($promotion->rewards->map(fn ($reward) => ['product' => $reward->product, 'quantity' => (int) $reward->quantity]));
+
+        if ($requirements->isEmpty()) {
+            return 0;
+        }
+
+        if ($requirements->contains(fn (array $requirement) => ! $requirement['product']?->is_active || $requirement['quantity'] <= 0)) {
+            return 0;
+        }
+
+        return (int) $requirements
+            ->groupBy(fn (array $requirement) => $requirement['product']->id)
+            ->map(function (Collection $requirements) {
+                $product = $requirements->first()['product'];
+                $quantity = $requirements->sum('quantity');
+
+                return intdiv((int) $product->stock, $quantity);
+            })
+            ->min();
+    }
+
+    private function promotionUnitPrice(ProductPromotion $promotion): float
+    {
+        $triggerTotal = $promotion->triggers->sum(
+            fn ($trigger) => (float) $trigger->product->price * (int) $trigger->min_quantity
+        );
+        $rewardTotal = $promotion->rewards->sum(
+            fn ($reward) => (float) $reward->extra_charge * (int) $reward->quantity
+        );
+
+        return $triggerTotal + $rewardTotal;
     }
 }

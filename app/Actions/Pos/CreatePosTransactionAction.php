@@ -4,11 +4,15 @@ namespace App\Actions\Pos;
 
 use App\Actions\ProductStock\AdjustProductStockAction;
 use App\Models\Product;
+use App\Models\ProductPackage;
+use App\Models\ProductPromotion;
 use App\Models\ProductStockMovement;
 use App\Models\Team;
 use App\Models\Transaction;
+use App\Models\TransactionItem;
 use App\Models\User;
 use App\Models\Voucher;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -22,52 +26,57 @@ class CreatePosTransactionAction
     {
         return DB::transaction(function () use ($team, $cashier, $data) {
             $cartItems = collect($data['items'])
-                ->keyBy('product_id')
                 ->map(fn (array $item) => [
-                    'product_id' => (int) $item['product_id'],
+                    'item_type' => $item['item_type'] ?? TransactionItem::ITEM_TYPE_PRODUCT,
+                    'item_id' => (int) ($item['item_id'] ?? $item['product_id']),
                     'quantity' => (int) $item['quantity'],
-                ]);
-
-            $products = Product::where('team_id', $team->id)
-                ->whereIn('id', $cartItems->keys())
-                ->lockForUpdate()
-                ->get()
-                ->keyBy('id');
-
-            if ($products->count() !== $cartItems->count()) {
-                throw ValidationException::withMessages([
-                    'items' => 'Sebagian produk tidak ditemukan pada tim ini.',
-                ]);
-            }
+                ])
+                ->groupBy(fn (array $item) => "{$item['item_type']}:{$item['item_id']}")
+                ->map(fn (Collection $items) => [
+                    'item_type' => $items->first()['item_type'],
+                    'item_id' => $items->first()['item_id'],
+                    'quantity' => $items->sum('quantity'),
+                ])
+                ->values();
 
             $subtotal = 0.0;
             $items = [];
+            $stockRequirements = [];
+
+            $products = $this->resolveProducts($team, $cartItems);
+            $packages = $this->resolvePackages($team, $cartItems);
+            $promotions = $this->resolvePromotions($team, $cartItems);
 
             foreach ($cartItems as $item) {
-                $product = $products->get($item['product_id']);
+                $saleItem = match ($item['item_type']) {
+                    TransactionItem::ITEM_TYPE_PRODUCT => $this->buildProductLine($products, $item),
+                    TransactionItem::ITEM_TYPE_PACKAGE => $this->buildPackageLine($packages, $item),
+                    TransactionItem::ITEM_TYPE_PROMOTION => $this->buildPromotionLine($promotions, $item),
+                    default => throw ValidationException::withMessages([
+                        'items' => 'Jenis item transaksi tidak valid.',
+                    ]),
+                };
 
-                if (! $product->is_active) {
-                    throw ValidationException::withMessages([
-                        'items' => "Produk '{$product->name}' sedang tidak aktif.",
-                    ]);
+                foreach ($saleItem['stock_requirements'] as $productId => $quantity) {
+                    $stockRequirements[$productId] = ($stockRequirements[$productId] ?? 0) + $quantity;
                 }
 
-                if ($product->stock < $item['quantity']) {
-                    throw ValidationException::withMessages([
-                        'items' => "Stok '{$product->name}' tidak mencukupi.",
-                    ]);
-                }
-
-                $lineTotal = (float) $product->price * $item['quantity'];
+                $lineTotal = $saleItem['unit_price'] * $item['quantity'];
                 $subtotal += $lineTotal;
 
                 $items[] = [
-                    'product' => $product,
+                    'item_type' => $item['item_type'],
+                    'item_id' => $item['item_id'],
+                    'product_id' => $saleItem['product_id'],
+                    'name' => $saleItem['name'],
+                    'sku' => $saleItem['sku'],
+                    'unit_price' => $saleItem['unit_price'],
                     'quantity' => $item['quantity'],
                     'line_total' => $lineTotal,
                 ];
             }
 
+            $stockProducts = $this->lockAndValidateStock($team, $stockRequirements);
             $voucher = $this->resolveVoucher($team, $data['voucher_code'] ?? null, $subtotal);
             $discountTotal = $voucher?->discountFor($subtotal) ?? 0.0;
             $grandTotal = max($subtotal - $discountTotal, 0);
@@ -95,21 +104,24 @@ class CreatePosTransactionAction
             ]);
 
             foreach ($items as $item) {
-                $product = $item['product'];
-
                 $transaction->items()->create([
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'product_sku' => $product->sku,
-                    'unit_price' => $product->price,
+                    'product_id' => $item['product_id'],
+                    'item_type' => $item['item_type'],
+                    'item_reference_id' => $item['item_id'],
+                    'product_name' => $item['name'],
+                    'product_sku' => $item['sku'],
+                    'unit_price' => $item['unit_price'],
                     'quantity' => $item['quantity'],
                     'discount_total' => 0,
                     'line_total' => $item['line_total'],
                 ]);
+            }
 
+            foreach ($stockRequirements as $productId => $quantity) {
+                $product = $stockProducts->get($productId);
                 $this->adjustProductStockAction->execute($product, $cashier, [
                     'type' => ProductStockMovement::TYPE_OUT,
-                    'quantity' => $item['quantity'],
+                    'quantity' => $quantity,
                     'note' => "Penjualan POS {$transaction->invoice_number}",
                     'reference_type' => Transaction::class,
                     'reference_id' => $transaction->id,
@@ -122,6 +134,214 @@ class CreatePosTransactionAction
 
             return $transaction->load(['items', 'cashier:id,name', 'voucher:id,code,name']);
         });
+    }
+
+    private function resolveProducts(Team $team, Collection $cartItems): Collection
+    {
+        $ids = $cartItems
+            ->where('item_type', TransactionItem::ITEM_TYPE_PRODUCT)
+            ->pluck('item_id');
+
+        return Product::where('team_id', $team->id)
+            ->whereIn('id', $ids)
+            ->get()
+            ->keyBy('id');
+    }
+
+    private function resolvePackages(Team $team, Collection $cartItems): Collection
+    {
+        $ids = $cartItems
+            ->where('item_type', TransactionItem::ITEM_TYPE_PACKAGE)
+            ->pluck('item_id');
+
+        return ProductPackage::where('team_id', $team->id)
+            ->whereIn('id', $ids)
+            ->with('items.product:id,team_id,name,sku,is_active')
+            ->get()
+            ->keyBy('id');
+    }
+
+    private function resolvePromotions(Team $team, Collection $cartItems): Collection
+    {
+        $ids = $cartItems
+            ->where('item_type', TransactionItem::ITEM_TYPE_PROMOTION)
+            ->pluck('item_id');
+
+        return ProductPromotion::where('team_id', $team->id)
+            ->whereIn('id', $ids)
+            ->with([
+                'triggers.product:id,team_id,name,sku,price,is_active',
+                'rewards.product:id,team_id,name,sku,is_active',
+            ])
+            ->get()
+            ->keyBy('id');
+    }
+
+    private function buildProductLine(Collection $products, array $item): array
+    {
+        /** @var Product|null $product */
+        $product = $products->get($item['item_id']);
+
+        if (! $product) {
+            throw ValidationException::withMessages([
+                'items' => 'Sebagian produk tidak ditemukan pada tim ini.',
+            ]);
+        }
+
+        if (! $product->is_active) {
+            throw ValidationException::withMessages([
+                'items' => "Produk '{$product->name}' sedang tidak aktif.",
+            ]);
+        }
+
+        return [
+            'product_id' => $product->id,
+            'name' => $product->name,
+            'sku' => $product->sku,
+            'unit_price' => (float) $product->price,
+            'stock_requirements' => [$product->id => $item['quantity']],
+        ];
+    }
+
+    private function buildPackageLine(Collection $packages, array $item): array
+    {
+        /** @var ProductPackage|null $package */
+        $package = $packages->get($item['item_id']);
+
+        if (! $package) {
+            throw ValidationException::withMessages([
+                'items' => 'Sebagian paket produk tidak ditemukan pada tim ini.',
+            ]);
+        }
+
+        if (! $package->is_active) {
+            throw ValidationException::withMessages([
+                'items' => "Paket '{$package->name}' sedang tidak aktif.",
+            ]);
+        }
+
+        if ($package->items->isEmpty()) {
+            throw ValidationException::withMessages([
+                'items' => "Paket '{$package->name}' belum memiliki komponen produk.",
+            ]);
+        }
+
+        $requirements = [];
+        foreach ($package->items as $packageItem) {
+            if (! $packageItem->product?->is_active) {
+                throw ValidationException::withMessages([
+                    'items' => "Komponen paket '{$package->name}' tidak aktif atau tidak ditemukan.",
+                ]);
+            }
+
+            $requirements[$packageItem->product_id] = ($requirements[$packageItem->product_id] ?? 0)
+                + ((int) $packageItem->quantity * $item['quantity']);
+        }
+
+        return [
+            'product_id' => null,
+            'name' => $package->name,
+            'sku' => $package->sku,
+            'unit_price' => (float) $package->base_price,
+            'stock_requirements' => $requirements,
+        ];
+    }
+
+    private function buildPromotionLine(Collection $promotions, array $item): array
+    {
+        /** @var ProductPromotion|null $promotion */
+        $promotion = $promotions->get($item['item_id']);
+
+        if (! $promotion) {
+            throw ValidationException::withMessages([
+                'items' => 'Sebagian promosi produk tidak ditemukan pada tim ini.',
+            ]);
+        }
+
+        if (! $promotion->is_active) {
+            throw ValidationException::withMessages([
+                'items' => "Promosi '{$promotion->name}' sedang tidak aktif.",
+            ]);
+        }
+
+        if ($promotion->triggers->isEmpty() || $promotion->rewards->isEmpty()) {
+            throw ValidationException::withMessages([
+                'items' => "Promosi '{$promotion->name}' belum memiliki syarat atau reward.",
+            ]);
+        }
+
+        $requirements = [];
+        $unitPrice = 0.0;
+
+        foreach ($promotion->triggers as $trigger) {
+            if (! $trigger->product?->is_active) {
+                throw ValidationException::withMessages([
+                    'items' => "Produk syarat promosi '{$promotion->name}' tidak aktif atau tidak ditemukan.",
+                ]);
+            }
+
+            $requirements[$trigger->product_id] = ($requirements[$trigger->product_id] ?? 0)
+                + ((int) $trigger->min_quantity * $item['quantity']);
+            $unitPrice += (float) $trigger->product->price * (int) $trigger->min_quantity;
+        }
+
+        foreach ($promotion->rewards as $reward) {
+            if (! $reward->product?->is_active) {
+                throw ValidationException::withMessages([
+                    'items' => "Produk reward promosi '{$promotion->name}' tidak aktif atau tidak ditemukan.",
+                ]);
+            }
+
+            $requirements[$reward->product_id] = ($requirements[$reward->product_id] ?? 0)
+                + ((int) $reward->quantity * $item['quantity']);
+            $unitPrice += (float) $reward->extra_charge * (int) $reward->quantity;
+        }
+
+        return [
+            'product_id' => null,
+            'name' => $promotion->name,
+            'sku' => 'PROMO-'.$promotion->id,
+            'unit_price' => $unitPrice,
+            'stock_requirements' => $requirements,
+        ];
+    }
+
+    private function lockAndValidateStock(Team $team, array $stockRequirements): Collection
+    {
+        if ($stockRequirements === []) {
+            return collect();
+        }
+
+        $products = Product::where('team_id', $team->id)
+            ->whereIn('id', array_keys($stockRequirements))
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        if ($products->count() !== count($stockRequirements)) {
+            throw ValidationException::withMessages([
+                'items' => 'Sebagian produk komponen transaksi tidak ditemukan pada tim ini.',
+            ]);
+        }
+
+        foreach ($stockRequirements as $productId => $quantity) {
+            /** @var Product $product */
+            $product = $products->get($productId);
+
+            if (! $product->is_active) {
+                throw ValidationException::withMessages([
+                    'items' => "Produk '{$product->name}' sedang tidak aktif.",
+                ]);
+            }
+
+            if ($product->stock < $quantity) {
+                throw ValidationException::withMessages([
+                    'items' => "Stok '{$product->name}' tidak mencukupi.",
+                ]);
+            }
+        }
+
+        return $products;
     }
 
     private function resolveVoucher(Team $team, ?string $code, float $subtotal): ?Voucher

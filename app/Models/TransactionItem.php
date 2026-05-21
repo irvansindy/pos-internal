@@ -7,9 +7,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TransactionItem extends Model
 {
+    public const ITEM_TYPE_PRODUCT = 'product';
+    public const ITEM_TYPE_PACKAGE = 'package';
+    public const ITEM_TYPE_PROMOTION = 'promotion';
+
     protected $fillable = [
         'transaction_id',
         'product_id',
+        'item_type',
+        'item_reference_id',
         'product_name',
         'product_sku',
         'unit_price',
