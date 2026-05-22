@@ -62,7 +62,10 @@ class PosController extends Controller
             ->get(['id', 'team_id', 'name', 'type', 'is_active', 'starts_at', 'ends_at']);
 
         $recentTransactions = $team->transactions()
-            ->with('cashier:id,name')
+            ->with([
+                'cashier:id,name',
+                'items:id,transaction_id,product_name,product_sku,unit_price,quantity,discount_total,line_total',
+            ])
             ->latest()
             ->limit(8)
             ->get([
@@ -71,6 +74,7 @@ class PosController extends Controller
                 'customer_name',
                 'status',
                 'payment_status',
+                'payment_method',
                 'grand_total',
                 'paid_amount',
                 'change_amount',

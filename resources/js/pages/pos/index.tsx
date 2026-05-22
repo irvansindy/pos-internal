@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import {
     Banknote,
+    ChevronDown,
     Minus,
     Plus,
     Receipt,
@@ -38,12 +39,18 @@ interface PaymentMethod {
     label: string;
 }
 
+interface SettlementForm {
+    payment_method: string;
+    paid_amount: string;
+}
+
 interface RecentTransaction {
     id: number;
     invoice_number: string;
     customer_name: string | null;
     status: 'pending' | 'completed' | 'void';
     payment_status: 'unpaid' | 'partial' | 'paid';
+    payment_method: string | null;
     grand_total: string;
     paid_amount: string;
     change_amount: string;
@@ -52,6 +59,17 @@ interface RecentTransaction {
         id: number;
         name: string;
     } | null;
+    items: RecentTransactionItem[];
+}
+
+interface RecentTransactionItem {
+    id: number;
+    product_name: string;
+    product_sku: string | null;
+    unit_price: string;
+    quantity: number;
+    discount_total: string;
+    line_total: string;
 }
 
 interface Props {
@@ -114,6 +132,14 @@ function cartItemKey(product: Product): string {
     return `${product.item_type}:${product.item_id}`;
 }
 
+function remainingPayment(transaction: RecentTransaction): number {
+    return Math.max(
+        parseFloat(transaction.grand_total || '0') -
+            parseFloat(transaction.paid_amount || '0'),
+        0,
+    );
+}
+
 function Badge({
     children,
     color = 'default',
@@ -168,6 +194,15 @@ export default function PosIndex({
     const [note, setNote] = useState('');
     const [processing, setProcessing] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [expandedTransactionId, setExpandedTransactionId] = useState<
+        number | null
+    >(null);
+    const [processingPaymentId, setProcessingPaymentId] = useState<
+        number | null
+    >(null);
+    const [settlementForms, setSettlementForms] = useState<
+        Record<number, SettlementForm>
+    >({});
 
     const filteredProducts = useMemo(() => {
         const keyword = search.trim().toLowerCase();
@@ -229,6 +264,26 @@ export default function PosIndex({
     const grandTotal = subtotal;
     const changeAmount = Math.max(paid - grandTotal, 0);
 
+    function paymentValidationMessage(): string | null {
+        if (cart.length === 0) {
+            return 'Keranjang transaksi masih kosong.';
+        }
+
+        if (paidAmount.trim() === '') {
+            return 'Jumlah bayar wajib diisi.';
+        }
+
+        if (!Number.isFinite(paid) || paid <= 0) {
+            return 'Jumlah bayar wajib lebih dari 0.';
+        }
+
+        if (paid < grandTotal) {
+            return 'Nominal pembayaran kurang dari total transaksi.';
+        }
+
+        return null;
+    }
+
     function addToCart(product: Product) {
         setCart((current) => {
             const selectedKey = cartItemKey(product);
@@ -282,9 +337,133 @@ export default function PosIndex({
         );
     }
 
-    function submitTransaction() {
-        setProcessing(true);
+    function toggleRecentTransaction(transactionId: number) {
+        setExpandedTransactionId((current) =>
+            current === transactionId ? null : transactionId,
+        );
+    }
+
+    function settlementFormFor(
+        transaction: RecentTransaction,
+    ): SettlementForm {
+        return (
+            settlementForms[transaction.id] ?? {
+                payment_method:
+                    transaction.payment_method ??
+                    paymentMethods[0]?.value ??
+                    paymentMethod,
+                paid_amount: '',
+            }
+        );
+    }
+
+    function updateSettlementForm(
+        transactionId: number,
+        values: Partial<SettlementForm>,
+    ) {
+        setSettlementForms((current) => ({
+            ...current,
+            [transactionId]: {
+                payment_method:
+                    current[transactionId]?.payment_method ??
+                    paymentMethods[0]?.value ??
+                    paymentMethod,
+                paid_amount: current[transactionId]?.paid_amount ?? '',
+                ...values,
+            },
+        }));
+
+        setErrors((current) => {
+            const next = { ...current };
+            delete next.paid_amount;
+
+            return next;
+        });
+    }
+
+    function settlementPaidAmount(transaction: RecentTransaction): number {
+        return parseFloat(settlementFormFor(transaction).paid_amount || '0');
+    }
+
+    function settlementChangeAmount(transaction: RecentTransaction): number {
+        return Math.max(
+            settlementPaidAmount(transaction) - remainingPayment(transaction),
+            0,
+        );
+    }
+
+    function settlementValidationMessage(
+        transaction: RecentTransaction,
+    ): string | null {
+        const form = settlementFormFor(transaction);
+        const paidAmount = settlementPaidAmount(transaction);
+
+        if (!form.payment_method) {
+            return 'Metode pembayaran wajib dipilih.';
+        }
+
+        if (form.paid_amount.trim() === '') {
+            return 'Jumlah bayar wajib diisi.';
+        }
+
+        if (!Number.isFinite(paidAmount) || paidAmount <= 0) {
+            return 'Jumlah bayar wajib lebih dari 0.';
+        }
+
+        if (paidAmount < remainingPayment(transaction)) {
+            return 'Nominal pembayaran kurang dari sisa tagihan.';
+        }
+
+        return null;
+    }
+
+    function settleTransaction(transaction: RecentTransaction) {
         setErrors({});
+
+        const paymentError = settlementValidationMessage(transaction);
+
+        if (paymentError) {
+            setErrors({ paid_amount: paymentError });
+
+            return;
+        }
+
+        const form = settlementFormFor(transaction);
+        setProcessingPaymentId(transaction.id);
+
+        router.post(
+            buildUrl(`/pos/transaction/${transaction.id}/payment`, teamSlug),
+            {
+                payment_method: form.payment_method,
+                paid_amount: form.paid_amount,
+            },
+            {
+                preserveScroll: true,
+                onError: (validationErrors) => setErrors(validationErrors),
+                onSuccess: () =>
+                    setSettlementForms((current) => {
+                        const next = { ...current };
+                        delete next[transaction.id];
+
+                        return next;
+                    }),
+                onFinish: () => setProcessingPaymentId(null),
+            },
+        );
+    }
+
+    function submitTransaction() {
+        setErrors({});
+
+        const paymentError = paymentValidationMessage();
+
+        if (paymentError) {
+            setErrors({ paid_amount: paymentError });
+
+            return;
+        }
+
+        setProcessing(true);
 
         router.post(
             buildUrl('/pos/transaction', teamSlug),
@@ -591,84 +770,446 @@ export default function PosIndex({
                                             </tr>
                                         ) : (
                                             recentTransactions.map(
-                                                (transaction) => (
-                                                    <tr
-                                                        key={transaction.id}
-                                                        style={{
-                                                            borderBottom:
-                                                                '1px solid var(--border)',
-                                                        }}
-                                                    >
-                                                        <td
-                                                            style={{
-                                                                padding:
-                                                                    '12px 16px',
-                                                            }}
+                                                (transaction) => {
+                                                    const isExpanded =
+                                                        expandedTransactionId ===
+                                                        transaction.id;
+
+                                                    return (
+                                                        <React.Fragment
+                                                            key={
+                                                                transaction.id
+                                                            }
                                                         >
-                                                            <div
+                                                            <tr
+                                                                onClick={() =>
+                                                                    toggleRecentTransaction(
+                                                                        transaction.id,
+                                                                    )
+                                                                }
                                                                 style={{
-                                                                    fontWeight: 700,
+                                                                    borderBottom:
+                                                                        isExpanded
+                                                                            ? 'none'
+                                                                            : '1px solid var(--border)',
+                                                                    cursor: 'pointer',
                                                                 }}
                                                             >
-                                                                {
-                                                                    transaction.invoice_number
-                                                                }
-                                                            </div>
-                                                            <div
-                                                                style={{
-                                                                    color: 'var(--muted-foreground)',
-                                                                    fontSize:
-                                                                        '12px',
-                                                                }}
-                                                            >
-                                                                {formatDate(
-                                                                    transaction.created_at,
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        <td
-                                                            style={{
-                                                                padding:
-                                                                    '12px 16px',
-                                                            }}
-                                                        >
-                                                            {transaction.customer_name ??
-                                                                'Umum'}
-                                                        </td>
-                                                        <td
-                                                            style={{
-                                                                padding:
-                                                                    '12px 16px',
-                                                            }}
-                                                        >
-                                                            <Badge
-                                                                color={
-                                                                    transaction.payment_status ===
-                                                                    'paid'
-                                                                        ? 'green'
-                                                                        : 'amber'
-                                                                }
-                                                            >
-                                                                {paymentStatusLabel(
-                                                                    transaction.payment_status,
-                                                                )}
-                                                            </Badge>
-                                                        </td>
-                                                        <td
-                                                            style={{
-                                                                padding:
-                                                                    '12px 16px',
-                                                                textAlign:
-                                                                    'right',
-                                                                fontWeight: 800,
-                                                            }}
-                                                        >
-                                                            {formatCurrency(
-                                                                transaction.grand_total,
+                                                                <td
+                                                                    style={{
+                                                                        padding:
+                                                                            '12px 16px',
+                                                                    }}
+                                                                >
+                                                                    <div
+                                                                        style={{
+                                                                            display:
+                                                                                'flex',
+                                                                            alignItems:
+                                                                                'center',
+                                                                            gap: '8px',
+                                                                            fontWeight: 700,
+                                                                        }}
+                                                                    >
+                                                                        <ChevronDown
+                                                                            size={
+                                                                                15
+                                                                            }
+                                                                            style={{
+                                                                                color: 'var(--muted-foreground)',
+                                                                                transform:
+                                                                                    isExpanded
+                                                                                        ? 'rotate(0deg)'
+                                                                                        : 'rotate(-90deg)',
+                                                                                transition:
+                                                                                    'transform 140ms ease',
+                                                                            }}
+                                                                        />
+                                                                        {
+                                                                            transaction.invoice_number
+                                                                        }
+                                                                    </div>
+                                                                    <div
+                                                                        style={{
+                                                                            color: 'var(--muted-foreground)',
+                                                                            fontSize:
+                                                                                '12px',
+                                                                            marginLeft:
+                                                                                '23px',
+                                                                        }}
+                                                                    >
+                                                                        {formatDate(
+                                                                            transaction.created_at,
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                                <td
+                                                                    style={{
+                                                                        padding:
+                                                                            '12px 16px',
+                                                                    }}
+                                                                >
+                                                                    {transaction.customer_name ??
+                                                                        'Umum'}
+                                                                </td>
+                                                                <td
+                                                                    style={{
+                                                                        padding:
+                                                                            '12px 16px',
+                                                                    }}
+                                                                >
+                                                                    <Badge
+                                                                        color={
+                                                                            transaction.payment_status ===
+                                                                            'paid'
+                                                                                ? 'green'
+                                                                                : 'amber'
+                                                                        }
+                                                                    >
+                                                                        {paymentStatusLabel(
+                                                                            transaction.payment_status,
+                                                                        )}
+                                                                    </Badge>
+                                                                </td>
+                                                                <td
+                                                                    style={{
+                                                                        padding:
+                                                                            '12px 16px',
+                                                                        textAlign:
+                                                                            'right',
+                                                                        fontWeight: 800,
+                                                                    }}
+                                                                >
+                                                                    {formatCurrency(
+                                                                        transaction.grand_total,
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+
+                                                            {isExpanded && (
+                                                                <tr
+                                                                    style={{
+                                                                        borderBottom:
+                                                                            '1px solid var(--border)',
+                                                                    }}
+                                                                >
+                                                                    <td
+                                                                        colSpan={
+                                                                            4
+                                                                        }
+                                                                        style={{
+                                                                            padding:
+                                                                                '0 16px 14px 39px',
+                                                                        }}
+                                                                    >
+                                                                        <div
+                                                                            style={{
+                                                                                borderTop:
+                                                                                    '1px solid var(--border)',
+                                                                                paddingTop:
+                                                                                    '12px',
+                                                                                display:
+                                                                                    'grid',
+                                                                                gap: '10px',
+                                                                            }}
+                                                                        >
+                                                                            {transaction
+                                                                                .items
+                                                                                .length ===
+                                                                            0 ? (
+                                                                                <div
+                                                                                    style={{
+                                                                                        color: 'var(--muted-foreground)',
+                                                                                        fontSize:
+                                                                                            '12px',
+                                                                                    }}
+                                                                                >
+                                                                                    Detail pesanan tidak tersedia.
+                                                                                </div>
+                                                                            ) : (
+                                                                                transaction.items.map(
+                                                                                    (
+                                                                                        item,
+                                                                                    ) => (
+                                                                                        <div
+                                                                                            key={
+                                                                                                item.id
+                                                                                            }
+                                                                                            style={{
+                                                                                                display:
+                                                                                                    'grid',
+                                                                                                gridTemplateColumns:
+                                                                                                    'minmax(0, 1fr) 88px 120px',
+                                                                                                gap: '12px',
+                                                                                                alignItems:
+                                                                                                    'center',
+                                                                                                fontSize:
+                                                                                                    '12px',
+                                                                                            }}
+                                                                                        >
+                                                                                            <div>
+                                                                                                <div
+                                                                                                    style={{
+                                                                                                        color: 'var(--foreground)',
+                                                                                                        fontWeight: 700,
+                                                                                                    }}
+                                                                                                >
+                                                                                                    {
+                                                                                                        item.product_name
+                                                                                                    }
+                                                                                                </div>
+                                                                                                <div
+                                                                                                    style={{
+                                                                                                        color: 'var(--muted-foreground)',
+                                                                                                        marginTop:
+                                                                                                            '2px',
+                                                                                                    }}
+                                                                                                >
+                                                                                                    {item.product_sku ??
+                                                                                                        'Tanpa SKU'}{' '}
+                                                                                                    x{' '}
+                                                                                                    {
+                                                                                                        item.quantity
+                                                                                                    }{' '}
+                                                                                                    @{' '}
+                                                                                                    {formatCurrency(
+                                                                                                        item.unit_price,
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <div
+                                                                                                style={{
+                                                                                                    color: 'var(--muted-foreground)',
+                                                                                                    textAlign:
+                                                                                                        'right',
+                                                                                                }}
+                                                                                            >
+                                                                                                Qty{' '}
+                                                                                                {
+                                                                                                    item.quantity
+                                                                                                }
+                                                                                            </div>
+                                                                                            <div
+                                                                                                style={{
+                                                                                                    color: 'var(--foreground)',
+                                                                                                    fontWeight: 800,
+                                                                                                    textAlign:
+                                                                                                        'right',
+                                                                                                }}
+                                                                                            >
+                                                                                                {formatCurrency(
+                                                                                                    item.line_total,
+                                                                                                )}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    ),
+                                                                                )
+                                                                            )}
+
+                                                                            <div
+                                                                                style={{
+                                                                                    borderTop:
+                                                                                        '1px solid var(--border)',
+                                                                                    paddingTop:
+                                                                                        '10px',
+                                                                                    display:
+                                                                                        'grid',
+                                                                                    gap: '6px',
+                                                                                    maxWidth:
+                                                                                        '280px',
+                                                                                    marginLeft:
+                                                                                        'auto',
+                                                                                }}
+                                                                            >
+                                                                                <SummaryRow
+                                                                                    label="Total"
+                                                                                    value={formatCurrency(
+                                                                                        transaction.grand_total,
+                                                                                    )}
+                                                                                    strong
+                                                                                />
+                                                                                <SummaryRow
+                                                                                    label="Bayar"
+                                                                                    value={formatCurrency(
+                                                                                        transaction.paid_amount,
+                                                                                    )}
+                                                                                />
+                                                                                {transaction.payment_status !==
+                                                                                    'paid' && (
+                                                                                    <div
+                                                                                        style={{
+                                                                                            display:
+                                                                                                'grid',
+                                                                                            gap: '8px',
+                                                                                        }}
+                                                                                    >
+                                                                                        <select
+                                                                                            value={
+                                                                                                settlementFormFor(
+                                                                                                    transaction,
+                                                                                                )
+                                                                                                    .payment_method
+                                                                                            }
+                                                                                            onChange={(
+                                                                                                event,
+                                                                                            ) =>
+                                                                                                updateSettlementForm(
+                                                                                                    transaction.id,
+                                                                                                    {
+                                                                                                        payment_method:
+                                                                                                            event
+                                                                                                                .target
+                                                                                                                .value,
+                                                                                                    },
+                                                                                                )
+                                                                                            }
+                                                                                            style={{
+                                                                                                ...inputStyle,
+                                                                                                minHeight:
+                                                                                                    '34px',
+                                                                                                fontSize:
+                                                                                                    '12px',
+                                                                                            }}
+                                                                                        >
+                                                                                            {paymentMethods.map(
+                                                                                                (
+                                                                                                    method,
+                                                                                                ) => (
+                                                                                                    <option
+                                                                                                        key={
+                                                                                                            method.value
+                                                                                                        }
+                                                                                                        value={
+                                                                                                            method.value
+                                                                                                        }
+                                                                                                    >
+                                                                                                        {
+                                                                                                            method.label
+                                                                                                        }
+                                                                                                    </option>
+                                                                                                ),
+                                                                                            )}
+                                                                                        </select>
+                                                                                        <input
+                                                                                            type="number"
+                                                                                            min={
+                                                                                                1
+                                                                                            }
+                                                                                            value={
+                                                                                                settlementFormFor(
+                                                                                                    transaction,
+                                                                                                )
+                                                                                                    .paid_amount
+                                                                                            }
+                                                                                            onChange={(
+                                                                                                event,
+                                                                                            ) =>
+                                                                                                updateSettlementForm(
+                                                                                                    transaction.id,
+                                                                                                    {
+                                                                                                        paid_amount:
+                                                                                                            event
+                                                                                                                .target
+                                                                                                                .value,
+                                                                                                    },
+                                                                                                )
+                                                                                            }
+                                                                                            placeholder="Jumlah bayar pelunasan"
+                                                                                            style={{
+                                                                                                ...inputStyle,
+                                                                                                minHeight:
+                                                                                                    '34px',
+                                                                                                fontSize:
+                                                                                                    '12px',
+                                                                                            }}
+                                                                                        />
+                                                                                    </div>
+                                                                                )}
+                                                                                {transaction.payment_status !==
+                                                                                    'paid' && (
+                                                                                    <SummaryRow
+                                                                                        label="Sisa"
+                                                                                        value={formatCurrency(
+                                                                                            remainingPayment(
+                                                                                                transaction,
+                                                                                            ),
+                                                                                        )}
+                                                                                        strong
+                                                                                    />
+                                                                                )}
+                                                                                <SummaryRow
+                                                                                    label="Kembalian"
+                                                                                    value={formatCurrency(
+                                                                                        transaction.payment_status ===
+                                                                                            'paid'
+                                                                                            ? transaction.change_amount
+                                                                                            : settlementChangeAmount(
+                                                                                                  transaction,
+                                                                                              ),
+                                                                                    )}
+                                                                                />
+                                                                                {transaction.payment_status !==
+                                                                                    'paid' && (
+                                                                                    <button
+                                                                                        onClick={() =>
+                                                                                            settleTransaction(
+                                                                                                transaction,
+                                                                                            )
+                                                                                        }
+                                                                                        disabled={
+                                                                                            processingPaymentId ===
+                                                                                            transaction.id
+                                                                                        }
+                                                                                        style={{
+                                                                                            minHeight:
+                                                                                                '36px',
+                                                                                            borderRadius:
+                                                                                                '8px',
+                                                                                            border: 'none',
+                                                                                            backgroundColor:
+                                                                                                processingPaymentId ===
+                                                                                                transaction.id
+                                                                                                    ? 'var(--muted)'
+                                                                                                    : 'hsl(142 70% 36%)',
+                                                                                            color:
+                                                                                                processingPaymentId ===
+                                                                                                transaction.id
+                                                                                                    ? 'var(--muted-foreground)'
+                                                                                                    : 'white',
+                                                                                            cursor:
+                                                                                                processingPaymentId ===
+                                                                                                transaction.id
+                                                                                                    ? 'not-allowed'
+                                                                                                    : 'pointer',
+                                                                                            fontWeight: 800,
+                                                                                            display:
+                                                                                                'inline-flex',
+                                                                                            alignItems:
+                                                                                                'center',
+                                                                                            justifyContent:
+                                                                                                'center',
+                                                                                            gap: '8px',
+                                                                                        }}
+                                                                                    >
+                                                                                        <Banknote
+                                                                                            size={
+                                                                                                15
+                                                                                            }
+                                                                                        />
+                                                                                        {processingPaymentId ===
+                                                                                        transaction.id
+                                                                                            ? 'Memproses...'
+                                                                                            : 'Lunasi'}
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
                                                             )}
-                                                        </td>
-                                                    </tr>
-                                                ),
+                                                        </React.Fragment>
+                                                    );
+                                                },
                                             )
                                         )}
                                     </tbody>
@@ -931,9 +1472,16 @@ export default function PosIndex({
                                 <input
                                     type="number"
                                     value={paidAmount}
-                                    onChange={(event) =>
-                                        setPaidAmount(event.target.value)
-                                    }
+                                    min={1}
+                                    onChange={(event) => {
+                                        setPaidAmount(event.target.value);
+                                        setErrors((current) => {
+                                            const next = { ...current };
+                                            delete next.paid_amount;
+
+                                            return next;
+                                        });
+                                    }}
                                     placeholder="Jumlah bayar"
                                     style={inputStyle}
                                 />

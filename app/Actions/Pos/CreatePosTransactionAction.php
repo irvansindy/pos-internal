@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\Voucher;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class CreatePosTransactionAction
@@ -81,8 +82,9 @@ class CreatePosTransactionAction
             $discountTotal = $voucher?->discountFor($subtotal) ?? 0.0;
             $grandTotal = max($subtotal - $discountTotal, 0);
             $paidAmount = (float) $data['paid_amount'];
+            $this->validatePaidAmount($paidAmount, $grandTotal);
+
             $changeAmount = max($paidAmount - $grandTotal, 0);
-            $isPaid = $paidAmount >= $grandTotal;
 
             $transaction = Transaction::create([
                 'team_id' => $team->id,
@@ -90,8 +92,8 @@ class CreatePosTransactionAction
                 'voucher_id' => $voucher?->id,
                 'invoice_number' => $this->generateInvoiceNumber($team),
                 'customer_name' => $data['customer_name'] ?? null,
-                'status' => $isPaid ? Transaction::STATUS_COMPLETED : Transaction::STATUS_PENDING,
-                'payment_status' => $isPaid ? Transaction::PAYMENT_STATUS_PAID : Transaction::PAYMENT_STATUS_PARTIAL,
+                'status' => Transaction::STATUS_COMPLETED,
+                'payment_status' => Transaction::PAYMENT_STATUS_PAID,
                 'payment_method' => $data['payment_method'],
                 'subtotal' => $subtotal,
                 'discount_total' => $discountTotal,
@@ -100,21 +102,11 @@ class CreatePosTransactionAction
                 'paid_amount' => $paidAmount,
                 'change_amount' => $changeAmount,
                 'note' => $data['note'] ?? null,
-                'paid_at' => $isPaid ? now() : null,
+                'paid_at' => now(),
             ]);
 
             foreach ($items as $item) {
-                $transaction->items()->create([
-                    'product_id' => $item['product_id'],
-                    'item_type' => $item['item_type'],
-                    'item_reference_id' => $item['item_id'],
-                    'product_name' => $item['name'],
-                    'product_sku' => $item['sku'],
-                    'unit_price' => $item['unit_price'],
-                    'quantity' => $item['quantity'],
-                    'discount_total' => 0,
-                    'line_total' => $item['line_total'],
-                ]);
+                $transaction->items()->create($this->transactionItemPayload($item));
             }
 
             foreach ($stockRequirements as $productId => $quantity) {
@@ -146,6 +138,53 @@ class CreatePosTransactionAction
             ->whereIn('id', $ids)
             ->get()
             ->keyBy('id');
+    }
+
+    private function validatePaidAmount(float $paidAmount, float $grandTotal): void
+    {
+        if ($paidAmount <= 0) {
+            throw ValidationException::withMessages([
+                'paid_amount' => 'Jumlah bayar wajib diisi.',
+            ]);
+        }
+
+        if ($paidAmount < $grandTotal) {
+            throw ValidationException::withMessages([
+                'paid_amount' => 'Nominal pembayaran kurang dari total transaksi.',
+            ]);
+        }
+    }
+
+    private function transactionItemPayload(array $item): array
+    {
+        $payload = [
+            'product_id' => $item['product_id'],
+            'product_name' => $item['name'],
+            'product_sku' => $item['sku'],
+            'unit_price' => $item['unit_price'],
+            'quantity' => $item['quantity'],
+            'discount_total' => 0,
+            'line_total' => $item['line_total'],
+        ];
+
+        if ($this->transactionItemsHaveSaleItemColumns()) {
+            $payload['item_type'] = $item['item_type'];
+            $payload['item_reference_id'] = $item['item_id'];
+        }
+
+        return $payload;
+    }
+
+    private function transactionItemsHaveSaleItemColumns(): bool
+    {
+        static $hasColumns = null;
+
+        if ($hasColumns === null) {
+            $hasColumns = Schema::hasColumn('transaction_items', 'item_type')
+                && Schema::hasColumn('transaction_items', 'item_reference_id');
+        }
+
+        return $hasColumns;
     }
 
     private function resolvePackages(Team $team, Collection $cartItems): Collection
