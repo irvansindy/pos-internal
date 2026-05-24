@@ -240,32 +240,25 @@ Route::prefix('{current_team}')
             Route::post('/transaction/{transaction}/payment', [PosController::class, 'processPayment'])->name('transaction.payment');
         });
 
-        // // ── TRANSACTIONS ──────────────────────────────────
-        // Route::prefix('transactions')->name('transactions.')->group(function () {
+        // ── TRANSACTIONS ──────────────────────────────────
+        Route::prefix('transactions')->name('transactions.')->group(function () {
 
-        //     Route::get('/', [TransactionController::class, 'index'])->name('index')
-        //         ->middleware(EnsureTeamPermission::class.':transaction.view');
+            Route::get('/', [TransactionController::class, 'index'])->name('index');
 
-        //     Route::get('/refunds', [TransactionController::class, 'refunds'])->name('refunds')
-        //         ->middleware(EnsureTeamPermission::class.':transaction.refund');
+            Route::post('/', [TransactionController::class, 'store'])->name('store')
+                ->middleware(EnsureTeamPermission::class.':transaction.create');
 
-        //     Route::get('/returns', [TransactionController::class, 'returns'])->name('returns')
-        //         ->middleware(EnsureTeamPermission::class.':transaction.return');
+            Route::get('/export', [TransactionController::class, 'export'])->name('export')
+                ->middleware(EnsureTeamPermission::class.':transaction.view');
 
-        //     Route::post('/{transaction}/void', [TransactionController::class, 'void'])->name('void')
-        //         ->middleware(EnsureTeamPermission::class.':transaction.void');
+            Route::put('/{transaction}', [TransactionController::class, 'update'])->name('update')
+                ->middleware(EnsureTeamPermission::class.':transaction.update');
 
-        //     Route::post('/{transaction}/refund', [TransactionController::class, 'processRefund'])->name('refund')
-        //         ->middleware(EnsureTeamPermission::class.':transaction.refund');
+            Route::delete('/{transaction}', [TransactionController::class, 'destroy'])->name('destroy')
+                ->middleware(EnsureTeamPermission::class.':transaction.delete');
+        });
 
-        //     Route::post('/{transaction}/return', [TransactionController::class, 'processReturn'])->name('return')
-        //         ->middleware(EnsureTeamPermission::class.':transaction.return');
-
-        //     Route::get('/{transaction}', [TransactionController::class, 'show'])->name('show')
-        //         ->middleware(EnsureTeamPermission::class.':transaction.view');
-        // });
-
-        // // ── VOUCHERS ──────────────────────────────────────
+        // ── VOUCHERS ──────────────────────────────────────
         // Route::prefix('vouchers')->name('vouchers.')->group(function () {
 
         //     Route::get('/', [VoucherController::class, 'index'])->name('index')

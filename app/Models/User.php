@@ -11,6 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 use Spatie\Permission\Traits\HasRoles;
 
 #[Fillable(['name', 'email', 'password', 'current_team_id'])]
@@ -108,7 +109,12 @@ class User extends Authenticatable
         }
 
         setPermissionsTeamId($team->id);
-        return $this->hasPermissionTo($permission);
+
+        try {
+            return $this->hasPermissionTo($permission);
+        } catch (PermissionDoesNotExist) {
+            return false;
+        }
     }
 
     public function hasDeveloperRole(): bool
