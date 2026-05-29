@@ -131,6 +131,16 @@ class Team extends Model
         return $this->hasMany(Transaction::class);
     }
 
+    public function transactionRefunds(): HasMany
+    {
+        return $this->hasMany(TransactionRefund::class);
+    }
+
+    public function transactionReturns(): HasMany
+    {
+        return $this->hasMany(TransactionReturn::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

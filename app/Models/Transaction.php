@@ -64,4 +64,14 @@ class Transaction extends Model
     {
         return $this->hasMany(TransactionItem::class);
     }
+
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(TransactionRefund::class);
+    }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(TransactionReturn::class);
+    }
 }

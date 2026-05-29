@@ -12,6 +12,8 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\Teams\TeamInvitationController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\TransactionRefundController;
+use App\Http\Controllers\TransactionReturnController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VoucherController;
 use App\Http\Middleware\EnsureTeamMembership;
@@ -245,6 +247,24 @@ Route::prefix('{current_team}')
 
             Route::get('/', [TransactionController::class, 'index'])->name('index');
 
+            Route::get('/refunds', [TransactionRefundController::class, 'index'])->name('refunds')
+                ->middleware(EnsureTeamPermission::class.':transaction.refund');
+
+            Route::post('/refunds', [TransactionRefundController::class, 'store'])->name('refunds.store')
+                ->middleware(EnsureTeamPermission::class.':transaction.refund');
+
+            Route::delete('/refunds/{refund}', [TransactionRefundController::class, 'destroy'])->name('refunds.destroy')
+                ->middleware(EnsureTeamPermission::class.':transaction.refund');
+
+            Route::get('/returns', [TransactionReturnController::class, 'index'])->name('returns')
+                ->middleware(EnsureTeamPermission::class.':transaction.return');
+
+            Route::post('/returns', [TransactionReturnController::class, 'store'])->name('returns.store')
+                ->middleware(EnsureTeamPermission::class.':transaction.return');
+
+            Route::delete('/returns/{return}', [TransactionReturnController::class, 'destroy'])->name('returns.destroy')
+                ->middleware(EnsureTeamPermission::class.':transaction.return');
+
             Route::post('/', [TransactionController::class, 'store'])->name('store')
                 ->middleware(EnsureTeamPermission::class.':transaction.create');
 
@@ -259,29 +279,20 @@ Route::prefix('{current_team}')
         });
 
         // ── VOUCHERS ──────────────────────────────────────
-        // Route::prefix('vouchers')->name('vouchers.')->group(function () {
+        Route::prefix('vouchers')->name('vouchers.')->group(function () {
 
-        //     Route::get('/', [VoucherController::class, 'index'])->name('index')
-        //         ->middleware(EnsureTeamPermission::class.':voucher.view');
+            Route::get('/', [VoucherController::class, 'index'])->name('index')
+                ->middleware(EnsureTeamPermission::class.':voucher.view');
 
-        //     Route::get('/create', [VoucherController::class, 'create'])->name('create')
-        //         ->middleware(EnsureTeamPermission::class.':voucher.create');
+            Route::post('/', [VoucherController::class, 'store'])->name('store')
+                ->middleware(EnsureTeamPermission::class.':voucher.create');
 
-        //     Route::post('/', [VoucherController::class, 'store'])->name('store')
-        //         ->middleware(EnsureTeamPermission::class.':voucher.create');
+            Route::put('/{voucher}', [VoucherController::class, 'update'])->name('update')
+                ->middleware(EnsureTeamPermission::class.':voucher.update');
 
-        //     Route::get('/{voucher}/edit', [VoucherController::class, 'edit'])->name('edit')
-        //         ->middleware(EnsureTeamPermission::class.':voucher.update');
-
-        //     Route::put('/{voucher}', [VoucherController::class, 'update'])->name('update')
-        //         ->middleware(EnsureTeamPermission::class.':voucher.update');
-
-        //     Route::delete('/{voucher}', [VoucherController::class, 'destroy'])->name('destroy')
-        //         ->middleware(EnsureTeamPermission::class.':voucher.delete');
-
-        //     Route::get('/{voucher}', [VoucherController::class, 'show'])->name('show')
-        //         ->middleware(EnsureTeamPermission::class.':voucher.view');
-        // });
+            Route::delete('/{voucher}', [VoucherController::class, 'destroy'])->name('destroy')
+                ->middleware(EnsureTeamPermission::class.':voucher.delete');
+        });
 
         // // ── REPORTS ───────────────────────────────────────
         // Route::prefix('reports')->name('reports.')->group(function () {
