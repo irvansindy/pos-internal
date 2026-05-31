@@ -1,5 +1,6 @@
 import { Link, usePage, router } from '@inertiajs/react';
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 import {
     ShoppingCart, Store, User, LogOut, ChevronsUpDown, Check,
     ChevronDown, ChevronRight, LayoutDashboard, Users, Package,
@@ -90,10 +91,12 @@ function NavLink({
     item,
     teamSlug,
     currentPath,
+    onNavigate,
 }: {
     item: NavChild;
     teamSlug: string;
     currentPath: string;
+    onNavigate?: () => void;
 }) {
     const Icon = iconMap[item.icon ?? ''];
     const href = buildUrl(item.route, teamSlug);
@@ -109,6 +112,7 @@ function NavLink({
     return (
         <Link
             href={href}
+            onClick={onNavigate}
             style={isActive
                 ? { ...base, backgroundColor: 'var(--sidebar-accent)', color: 'var(--sidebar-accent-foreground)', fontWeight: 500 }
                 : { ...base, color: 'var(--sidebar-foreground)', opacity: 0.8 }
@@ -137,10 +141,12 @@ function NavGroup({
     item,
     teamSlug,
     currentPath,
+    onNavigate,
 }: {
     item: NavItem;
     teamSlug: string;
     currentPath: string;
+    onNavigate?: () => void;
 }) {
     const Icon = iconMap[item.icon];
     const href = item.route ? buildUrl(item.route, teamSlug) : null;
@@ -158,6 +164,7 @@ function NavGroup({
                 item={{ name: item.name, label: item.label, route: item.route!, icon: item.icon }}
                 teamSlug={teamSlug}
                 currentPath={currentPath}
+                onNavigate={onNavigate}
             />
         );
     }
@@ -210,6 +217,7 @@ function NavGroup({
                             item={child}
                             teamSlug={teamSlug}
                             currentPath={currentPath}
+                            onNavigate={onNavigate}
                         />
                     ))}
                 </div>
@@ -355,7 +363,15 @@ function TeamSwitcherWidget({ current, teams }: {
 }
 
 // ─── Main Sidebar Export ──────────────────────────────────
-export default function Sidebar() {
+export default function Sidebar({
+    className,
+    style,
+    onNavigate,
+}: {
+    className?: string;
+    style?: React.CSSProperties;
+    onNavigate?: () => void;
+}) {
     const page = usePage();
     const { auth, navigation } = page.props as any;
     const navItems: NavItem[] = navigation ?? [];
@@ -367,16 +383,19 @@ export default function Sidebar() {
     const logoutUrl = '/logout';
 
     return (
-        <aside style={{
-            display: 'flex', flexDirection: 'column',
-            height: '100%', width: '256px', flexShrink: 0,
-            borderRight: '1px solid var(--sidebar-border)',
-            backgroundColor: 'var(--sidebar-background)',
-        }}>
+        <aside
+            className={cn('flex h-full w-64 shrink-0 flex-col', className)}
+            style={{
+                borderRight: '1px solid var(--sidebar-border)',
+                backgroundColor: 'var(--sidebar-background)',
+                ...style,
+            }}
+        >
             {/* Logo */}
             <div style={{ padding: '16px', borderBottom: '1px solid var(--sidebar-border)' }}>
                 <Link
                     href={dashboardUrl}
+                    onClick={onNavigate}
                     style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}
                 >
                     <div style={{
@@ -416,6 +435,7 @@ export default function Sidebar() {
                         item={item}
                         teamSlug={teamSlug}
                         currentPath={currentPath}
+                        onNavigate={onNavigate}
                     />
                 ))}
             </nav>
@@ -452,6 +472,7 @@ export default function Sidebar() {
                         href={logoutUrl}
                         method="post"
                         as="button"
+                        onClick={onNavigate}
                         style={{
                             color: 'var(--sidebar-foreground)', opacity: 0.4,
                             background: 'none', border: 'none', cursor: 'pointer',

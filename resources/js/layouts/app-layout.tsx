@@ -1,15 +1,15 @@
-import { PropsWithChildren, ReactNode } from 'react';
 import { usePage } from '@inertiajs/react';
-import Sidebar from '@/components/ui/sidebar';
-import { AppHeader } from '@/components/app-header';
 import {
     AlertCircle,
+    AlertTriangle,
     CheckCircle2,
     Info,
     X,
-    AlertTriangle,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import type { PropsWithChildren, ReactNode } from 'react';
+import { useMemo, useState } from 'react';
+import { AppHeader } from '@/components/app-header';
+import Sidebar from '@/components/ui/sidebar';
 
 interface FlashMessage {
     success?: string;
@@ -19,11 +19,12 @@ interface FlashMessage {
 }
 
 function FlashBanner({ flash }: { flash: FlashMessage }) {
-    const [dismissed, setDismissed] = useState<Record<string, boolean>>({});
-
-    useEffect(() => {
-        setDismissed({});
-    }, [flash]);
+    const flashKey = useMemo(() => JSON.stringify(flash), [flash]);
+    const [dismissed, setDismissed] = useState<{
+        key: string;
+        items: Record<string, boolean>;
+    }>({ key: flashKey, items: {} });
+    const dismissedItems = dismissed.key === flashKey ? dismissed.items : {};
 
     const messages = [
         {
@@ -50,12 +51,14 @@ function FlashBanner({ flash }: { flash: FlashMessage }) {
             icon: Info,
             color: 'text-[var(--color-text-info)] bg-[var(--color-background-info)] border-[var(--color-border-info)]',
         },
-    ].filter((m) => m.message && !dismissed[m.key]);
+    ].filter((m) => m.message && !dismissedItems[m.key]);
 
-    if (messages.length === 0) return null;
+    if (messages.length === 0) {
+        return null;
+    }
 
     return (
-        <div className="fixed top-4 right-4 z-50 w-full max-w-sm space-y-2">
+        <div className="fixed top-3 right-3 left-3 z-50 space-y-2 sm:top-4 sm:right-4 sm:left-auto sm:w-full sm:max-w-sm">
             {messages.map(({ key, message, icon: Icon, color }) => (
                 <div
                     key={key}
@@ -65,7 +68,15 @@ function FlashBanner({ flash }: { flash: FlashMessage }) {
                     <p className="flex-1 text-sm">{message}</p>
                     <button
                         onClick={() =>
-                            setDismissed((d) => ({ ...d, [key]: true }))
+                            setDismissed((current) => ({
+                                key: flashKey,
+                                items: {
+                                    ...(current.key === flashKey
+                                        ? current.items
+                                        : {}),
+                                    [key]: true,
+                                },
+                            }))
                         }
                         className="shrink-0 opacity-60 hover:opacity-100"
                     >
@@ -85,20 +96,22 @@ export default function AppLayout({ children, header }: AppLayoutProps) {
     const { flash } = usePage().props as any;
 
     return (
-        <div className="flex h-screen bg-(--color-background-tertiary)">
-            <Sidebar />
+        <div className="flex h-dvh min-w-0 bg-(--color-background-tertiary)">
+            <Sidebar className="hidden lg:flex" />
 
             <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
                 <AppHeader />
 
                 {header && (
-                    <header className="shrink-0 border-b border-(--color-border-tertiary) bg-(--color-background-primary) px-6 py-4">
+                    <header className="shrink-0 border-b border-(--color-border-tertiary) bg-(--color-background-primary) px-4 py-4 sm:px-6">
                         {header}
                     </header>
                 )}
 
-                <main className="flex-1 overflow-y-auto px-6 py-6">
-                    {children}
+                <main className="min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+                    <div className="mx-auto w-full max-w-screen-2xl">
+                        {children}
+                    </div>
                 </main>
             </div>
 

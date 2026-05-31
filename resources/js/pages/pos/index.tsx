@@ -343,9 +343,7 @@ export default function PosIndex({
         );
     }
 
-    function settlementFormFor(
-        transaction: RecentTransaction,
-    ): SettlementForm {
+    function settlementFormFor(transaction: RecentTransaction): SettlementForm {
         return (
             settlementForms[transaction.id] ?? {
                 payment_method:
@@ -499,6 +497,7 @@ export default function PosIndex({
             <Head title="POS Kasir" />
 
             <div
+                className="pos-page"
                 style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -506,6 +505,7 @@ export default function PosIndex({
                 }}
             >
                 <div
+                    className="pos-page-header"
                     style={{
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -550,6 +550,7 @@ export default function PosIndex({
                 </div>
 
                 <div
+                    className="pos-layout-grid"
                     style={{
                         display: 'grid',
                         gridTemplateColumns: 'minmax(0, 1fr) 420px',
@@ -628,6 +629,7 @@ export default function PosIndex({
                             </div>
 
                             <div
+                                className="pos-products-grid"
                                 style={{
                                     display: 'grid',
                                     gridTemplateColumns:
@@ -777,9 +779,7 @@ export default function PosIndex({
 
                                                     return (
                                                         <React.Fragment
-                                                            key={
-                                                                transaction.id
-                                                            }
+                                                            key={transaction.id}
                                                         >
                                                             <tr
                                                                 onClick={() =>
@@ -924,7 +924,10 @@ export default function PosIndex({
                                                                                             '12px',
                                                                                     }}
                                                                                 >
-                                                                                    Detail pesanan tidak tersedia.
+                                                                                    Detail
+                                                                                    pesanan
+                                                                                    tidak
+                                                                                    tersedia.
                                                                                 </div>
                                                                             ) : (
                                                                                 transaction.items.map(
@@ -1219,6 +1222,7 @@ export default function PosIndex({
                     </div>
 
                     <div
+                        className="pos-cart-panel"
                         style={{
                             position: 'sticky',
                             top: '20px',
@@ -1314,8 +1318,7 @@ export default function PosIndex({
                                             >
                                                 {formatCurrency(
                                                     item.product.price,
-                                                )}
-                                                {' '}
+                                                )}{' '}
                                                 <Badge color="blue">
                                                     {itemTypeLabel(
                                                         item.product.item_type,
@@ -1395,9 +1398,7 @@ export default function PosIndex({
                                         <div style={{ textAlign: 'right' }}>
                                             <button
                                                 onClick={() =>
-                                                    removeFromCart(
-                                                        item.product,
-                                                    )
+                                                    removeFromCart(item.product)
                                                 }
                                                 style={{
                                                     border: 'none',
