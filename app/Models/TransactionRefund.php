@@ -8,13 +8,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class TransactionRefund extends Model
 {
     public const STATUS_APPROVED = 'approved';
+
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
         'team_id',
         'transaction_id',
         'user_id',
+        'cashier_shift_id',
         'refund_number',
         'amount',
         'method',
@@ -41,5 +44,10 @@ class TransactionRefund extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function cashierShift(): BelongsTo
+    {
+        return $this->belongsTo(CashierShift::class);
     }
 }

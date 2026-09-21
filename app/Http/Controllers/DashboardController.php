@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -47,10 +48,10 @@ class DashboardController extends Controller
         }
 
         return Inertia::render('dashboard', [
-            'stats'               => $stats,
-            'isOwner'             => $team ? $user->ownsTeam($team) : false,
-            'recentTransactions'  => $recentTransactions,
-            'topProducts'         => $topProducts,
+            'stats' => $stats,
+            'isOwner' => $team ? $user->ownsTeam($team) : false,
+            'recentTransactions' => $recentTransactions,
+            'topProducts' => $topProducts,
         ]);
     }
 
@@ -100,7 +101,7 @@ class DashboardController extends Controller
         ];
     }
 
-    private function buildTopProducts(mixed $team): \Illuminate\Support\Collection
+    private function buildTopProducts(mixed $team): Collection
     {
         return TransactionItem::query()
             ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')

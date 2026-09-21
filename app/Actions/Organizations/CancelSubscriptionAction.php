@@ -23,7 +23,7 @@ class CancelSubscriptionAction
      *   you don't lose access to something you already paid for.
      *
      * @throws RuntimeException if the subscription is already
-     *         suspended/canceled, or there's no subscription at all.
+     *                          suspended/canceled, or there's no subscription at all.
      */
     public function execute(Organization $organization): Subscription
     {

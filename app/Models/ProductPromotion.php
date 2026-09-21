@@ -23,9 +23,9 @@ class ProductPromotion extends Model
     ];
 
     protected $casts = [
-        'is_active'  => 'boolean',
-        'starts_at'  => 'date',
-        'ends_at'    => 'date',
+        'is_active' => 'boolean',
+        'starts_at' => 'date',
+        'ends_at' => 'date',
     ];
 
     // ── Relationships ─────────────────────────────────────

@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\ProductStock\AdjustProductStockAction;
 use App\Actions\Transaction\CreateTransactionReturnAction;
-use App\Models\ProductStockMovement;
+use App\Models\Transaction;
 use App\Models\TransactionReturn;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class TransactionReturnController extends Controller
@@ -32,6 +32,9 @@ class TransactionReturnController extends Controller
 
         $transactionItems = $team->transactions()
             ->with(['items' => fn ($query) => $query->whereNotNull('product_id')])
+            ->where('status', Transaction::STATUS_COMPLETED)
+            ->whereIn('payment_status', [Transaction::PAYMENT_STATUS_PAID, Transaction::PAYMENT_STATUS_PARTIAL])
+            ->where('paid_amount', '>', 0)
             ->whereHas('items', fn ($query) => $query->whereNotNull('product_id'))
             ->latest('created_at')
             ->limit(100)
@@ -89,23 +92,16 @@ class TransactionReturnController extends Controller
         return back()->with('success', 'Return barang berhasil dicatat.');
     }
 
-    public function destroy(Request $request, string $currentTeam, TransactionReturn $return, AdjustProductStockAction $adjustProductStockAction)
+    public function destroy(Request $request, string $currentTeam, TransactionReturn $return)
     {
         $team = $request->user()?->currentTeam;
-        $user = $request->user();
 
         abort_if(! $team, 403, 'Tidak ada tim aktif.');
         abort_unless($return->team_id === $team->id, 404);
 
-        $return->loadMissing('product');
-
-        if ($return->restock && $return->status === TransactionReturn::STATUS_APPROVED && $return->product) {
-            $adjustProductStockAction->execute($return->product, $user, [
-                'type' => ProductStockMovement::TYPE_OUT,
-                'quantity' => $return->quantity,
-                'note' => "Pembatalan return barang {$return->return_number}",
-                'reference_type' => TransactionReturn::class,
-                'reference_id' => $return->id,
+        if ($return->status === TransactionReturn::STATUS_APPROVED) {
+            throw ValidationException::withMessages([
+                'return' => 'Return yang sudah disetujui tidak dapat dihapus.',
             ]);
         }
 

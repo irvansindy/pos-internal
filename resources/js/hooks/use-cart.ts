@@ -9,7 +9,11 @@ export function useCart() {
     const [cart, setCart] = useState<CartItem[]>([]);
 
     const subtotal = useMemo(
-        () => cart.reduce((sum, i) => sum + parseFloat(i.product.price) * i.quantity, 0),
+        () =>
+            cart.reduce(
+                (sum, i) => sum + parseFloat(i.product.price) * i.quantity,
+                0,
+            ),
         [cart],
     );
 
@@ -21,7 +25,10 @@ export function useCart() {
             if (existing) {
                 return prev.map((i) =>
                     cartItemKey(i.product) === key
-                        ? { ...i, quantity: Math.min(i.quantity + 1, product.stock) }
+                        ? {
+                              ...i,
+                              quantity: Math.min(i.quantity + 1, product.stock),
+                          }
                         : i,
                 );
             }
@@ -36,7 +43,13 @@ export function useCart() {
             prev
                 .map((i) =>
                     cartItemKey(i.product) === key
-                        ? { ...i, quantity: Math.max(1, Math.min(quantity, i.product.stock)) }
+                        ? {
+                              ...i,
+                              quantity: Math.max(
+                                  1,
+                                  Math.min(quantity, i.product.stock),
+                              ),
+                          }
                         : i,
                 )
                 .filter((i) => i.quantity > 0),
@@ -52,5 +65,12 @@ export function useCart() {
         setCart([]);
     }
 
-    return { cart, subtotal, addToCart, setQuantity, removeFromCart, clearCart };
+    return {
+        cart,
+        subtotal,
+        addToCart,
+        setQuantity,
+        removeFromCart,
+        clearCart,
+    };
 }

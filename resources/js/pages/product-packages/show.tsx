@@ -1,4 +1,3 @@
-
 import { Head, Link, router } from '@inertiajs/react';
 import {
     AlertCircle,
@@ -80,6 +79,7 @@ function buildUrl(path: string, teamSlug: string): string {
 
 function formatCurrency(value: string | number): string {
     const num = typeof value === 'string' ? parseFloat(value) : value;
+
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
@@ -97,11 +97,11 @@ function formatDate(value: string): string {
 
 // ─── Shared UI ────────────────────────────────────────────
 const COLORS = {
-    blue:    { bg: 'hsl(214 100% 95%)', text: 'hsl(214 100% 40%)' },
-    green:   { bg: 'hsl(142 76% 92%)',  text: 'hsl(142 76% 30%)' },
-    red:     { bg: 'hsl(0 72% 94%)',    text: 'hsl(0 72% 40%)' },
-    amber:   { bg: 'hsl(43 96% 92%)',   text: 'hsl(43 96% 30%)' },
-    default: { bg: 'var(--muted)',       text: 'var(--muted-foreground)' },
+    blue: { bg: 'hsl(214 100% 95%)', text: 'hsl(214 100% 40%)' },
+    green: { bg: 'hsl(142 76% 92%)', text: 'hsl(142 76% 30%)' },
+    red: { bg: 'hsl(0 72% 94%)', text: 'hsl(0 72% 40%)' },
+    amber: { bg: 'hsl(43 96% 92%)', text: 'hsl(43 96% 30%)' },
+    default: { bg: 'var(--muted)', text: 'var(--muted-foreground)' },
 } as const;
 
 function Badge({
@@ -112,6 +112,7 @@ function Badge({
     color?: keyof typeof COLORS;
 }) {
     const c = COLORS[color];
+
     return (
         <span
             style={{
@@ -417,7 +418,9 @@ export default function ProductPackageShow({
                                 >
                                     {pkg.name}
                                 </h1>
-                                <Badge color={pkg.is_active ? 'green' : 'default'}>
+                                <Badge
+                                    color={pkg.is_active ? 'green' : 'default'}
+                                >
                                     {pkg.is_active ? 'Aktif' : 'Nonaktif'}
                                 </Badge>
                                 {pkg.category && (
@@ -578,9 +581,18 @@ export default function ProductPackageShow({
                             flexWrap: 'wrap',
                         }}
                     >
-                        <MetaItem label="Dibuat" value={formatDate(pkg.created_at)} />
-                        <MetaItem label="Diperbarui" value={formatDate(pkg.updated_at)} />
-                        <MetaItem label="Jumlah Item" value={`${pkg.items.length} produk`} />
+                        <MetaItem
+                            label="Dibuat"
+                            value={formatDate(pkg.created_at)}
+                        />
+                        <MetaItem
+                            label="Diperbarui"
+                            value={formatDate(pkg.updated_at)}
+                        />
+                        <MetaItem
+                            label="Jumlah Item"
+                            value={`${pkg.items.length} produk`}
+                        />
                         <MetaItem
                             label="Grup Addon"
                             value={
@@ -596,7 +608,8 @@ export default function ProductPackageShow({
                 <div
                     style={{
                         display: 'grid',
-                        gridTemplateColumns: pkg.addon_groups.length > 0 ? '1fr 1fr' : '1fr',
+                        gridTemplateColumns:
+                            pkg.addon_groups.length > 0 ? '1fr 1fr' : '1fr',
                         gap: '20px',
                         alignItems: 'start',
                     }}
@@ -628,7 +641,8 @@ export default function ProductPackageShow({
                                             width: '24px',
                                             height: '24px',
                                             borderRadius: '6px',
-                                            backgroundColor: 'var(--background)',
+                                            backgroundColor:
+                                                'var(--background)',
                                             color: 'var(--muted-foreground)',
                                             fontSize: '11px',
                                             fontWeight: 700,
@@ -661,7 +675,11 @@ export default function ProductPackageShow({
                                                 gap: '8px',
                                             }}
                                         >
-                                            <span style={{ fontFamily: 'monospace' }}>
+                                            <span
+                                                style={{
+                                                    fontFamily: 'monospace',
+                                                }}
+                                            >
                                                 {item.product.sku}
                                             </span>
                                             {item.note && (
@@ -677,14 +695,20 @@ export default function ProductPackageShow({
                                     </div>
 
                                     {/* Qty & price */}
-                                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                    <div
+                                        style={{
+                                            textAlign: 'right',
+                                            flexShrink: 0,
+                                        }}
+                                    >
                                         <div
                                             style={{
                                                 display: 'inline-flex',
                                                 alignItems: 'center',
                                                 padding: '2px 8px',
                                                 borderRadius: '6px',
-                                                backgroundColor: 'hsl(214 100% 95%)',
+                                                backgroundColor:
+                                                    'hsl(214 100% 95%)',
                                                 color: 'hsl(214 100% 40%)',
                                                 fontSize: '12px',
                                                 fontWeight: 700,
@@ -869,6 +893,7 @@ function MetaItem({ label, value }: { label: string; value: string }) {
 function AddonGroupCard({ group }: { group: AddonGroup }) {
     function formatCurrency(value: string | number): string {
         const num = typeof value === 'string' ? parseFloat(value) : value;
+
         return new Intl.NumberFormat('id-ID', {
             style: 'currency',
             currency: 'IDR',
@@ -974,6 +999,7 @@ function AddonGroupCard({ group }: { group: AddonGroup }) {
                     >
                         {group.options.map((opt) => {
                             const isFree = parseFloat(opt.extra_charge) === 0;
+
                             return (
                                 <div
                                     key={opt.id}

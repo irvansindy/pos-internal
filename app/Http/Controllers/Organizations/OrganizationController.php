@@ -2,13 +2,8 @@
 
 namespace App\Http\Controllers\Organizations;
 
-use App\Actions\Organizations\UpgradePlanAction;
-use App\Enums\PlanCode;
-use App\Exceptions\StoreQuotaExceededException;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Organizations\UpgradeOrganizationPlanRequest;
 use App\Models\Plan;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -79,37 +74,5 @@ class OrganizationController extends Controller
                 ]),
             'canManage' => $organization->ownedBy($user),
         ]);
-    }
-
-    /**
-     * Switch the organization's subscription to a different plan
-     * (self-service, no payment gateway yet — see docs/18).
-     */
-    public function upgrade(UpgradeOrganizationPlanRequest $request, UpgradePlanAction $upgradePlan): RedirectResponse
-    {
-        $user = $request->user();
-        $organization = $user->currentOrganization;
-
-        abort_unless($organization, 403, 'Anda belum memiliki organization aktif.');
-        abort_unless($organization->ownedBy($user), 403, 'Hanya owner yang dapat mengubah paket.');
-
-        $plan = Plan::findByCode(PlanCode::from($request->validated('plan_code')));
-
-        abort_unless($plan, 404, 'Paket tidak ditemukan.');
-
-        try {
-            $upgradePlan->execute($organization, $plan);
-        } catch (StoreQuotaExceededException) {
-            Inertia::flash('toast', [
-                'type' => 'error',
-                'message' => __('Jumlah toko Anda saat ini melebihi kuota paket tujuan. Hapus/nonaktifkan toko terlebih dahulu, atau pilih paket yang lebih besar.'),
-            ]);
-
-            return back();
-        }
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Paket berhasil diubah.')]);
-
-        return to_route('organizations.stores');
     }
 }

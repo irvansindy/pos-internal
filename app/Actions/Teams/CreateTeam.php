@@ -16,7 +16,7 @@ class CreateTeam
      * user as owner.
      *
      * @throws StoreQuotaExceededException when the organization's
-     *         subscription plan does not have room for another store.
+     *                                     subscription plan does not have room for another store.
      */
     public function handle(User $user, string $name, Organization $organization, bool $isPersonal = false): Team
     {

@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
+import AdminLayout from '@/layouts/admin-layout';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
@@ -18,7 +19,7 @@ createInertiaApp({
             `./pages/${name}.tsx`,
             import.meta.glob('./pages/**/*.tsx'),
         );
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         return page as any;
     },
 
@@ -27,17 +28,18 @@ createInertiaApp({
             <TooltipProvider delayDuration={0}>
                 <App {...props} />
                 <Toaster />
-            </TooltipProvider>
+            </TooltipProvider>,
         );
     },
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     layout: (name: string): any => {
         switch (true) {
             case name === 'welcome':
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
+            case name.startsWith('admin/'):
+                return AdminLayout;
             case name.startsWith('settings/'):
             case name.startsWith('teams/'):
             case name.startsWith('organizations/'):

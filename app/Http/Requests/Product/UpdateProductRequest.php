@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Product;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateProductRequest extends FormRequest
 {
@@ -16,8 +17,8 @@ class UpdateProductRequest extends FormRequest
         $productId = $this->route('productId');
 
         return [
-            'category_id' => ['nullable', 'integer', 'exists:product_categories,id'],
-            'sku' => ['required', 'string', "unique:products,sku,{$productId}"],
+            'category_id' => ['nullable', 'integer', Rule::exists('product_categories', 'id')->where('team_id', $this->user()->currentTeam->id)],
+            'sku' => ['required', 'string', Rule::unique('products', 'sku')->where('team_id', $this->user()->currentTeam->id)->ignore($productId)],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'price' => ['required', 'numeric', 'min:0'],

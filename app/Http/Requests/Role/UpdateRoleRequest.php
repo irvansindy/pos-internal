@@ -15,9 +15,9 @@ class UpdateRoleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'label'         => ['required', 'string', 'max:100'],
-            'description'   => ['nullable', 'string', 'max:255'],
-            'permissions'   => ['array'],
+            'label' => ['required', 'string', 'max:100'],
+            'description' => ['nullable', 'string', 'max:255'],
+            'permissions' => ['array'],
             'permissions.*' => [
                 'string',
                 Rule::exists('permissions', 'name')->where('guard_name', 'web'),
@@ -28,8 +28,8 @@ class UpdateRoleRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'label.required'       => 'Label role wajib diisi.',
-            'permissions.array'    => 'Format permission tidak valid.',
+            'label.required' => 'Label role wajib diisi.',
+            'permissions.array' => 'Format permission tidak valid.',
             'permissions.*.exists' => 'Permission tidak ditemukan.',
         ];
     }

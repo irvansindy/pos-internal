@@ -2,7 +2,12 @@
 
 namespace App\Actions\Pos;
 
+use App\Actions\Customer\EarnCustomerPointsAction;
+use App\Actions\Customer\RedeemCustomerPointsAction;
 use App\Actions\ProductStock\AdjustProductStockAction;
+use App\Models\CashierShift;
+use App\Models\Customer;
+use App\Models\DiningTable;
 use App\Models\Product;
 use App\Models\ProductPackage;
 use App\Models\ProductPromotion;
@@ -10,6 +15,7 @@ use App\Models\ProductStockMovement;
 use App\Models\Team;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
+use App\Models\TransactionPayment;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Support\DocumentNumberGenerator;
@@ -23,6 +29,8 @@ class CreatePosTransactionAction
 {
     public function __construct(
         private AdjustProductStockAction $adjustProductStockAction,
+        private EarnCustomerPointsAction $earnCustomerPointsAction,
+        private RedeemCustomerPointsAction $redeemCustomerPointsAction,
     ) {}
 
     public function execute(Team $team, User $cashier, array $data): Transaction
@@ -81,27 +89,54 @@ class CreatePosTransactionAction
 
             $stockProducts = $this->lockAndValidateStock($team, $stockRequirements);
             $voucher = $this->resolveVoucher($team, $data['voucher_code'] ?? null, $subtotal);
-            $discountTotal = $voucher?->discountFor($subtotal) ?? 0.0;
+            $customer = $this->resolveCustomer($team, $data['customer_id'] ?? null);
+            $diningTable = $this->resolveDiningTable($team, $data['dining_table_id'] ?? null);
+            $voucherDiscount = $voucher?->discountFor($subtotal) ?? 0.0;
+            $requestedPoints = max((int) ($data['points_to_redeem'] ?? 0), 0);
+            $maxRedeemablePoints = (int) floor(max($subtotal - $voucherDiscount, 0) / max((int) config('loyalty.point_value'), 1));
+            $pointsRedeemed = min($requestedPoints, $maxRedeemablePoints);
+
+            if ($requestedPoints > 0 && ! $customer) {
+                throw ValidationException::withMessages(['points_to_redeem' => 'Pilih pelanggan sebelum menukar poin.']);
+            }
+            if ($customer && $requestedPoints > (int) $customer->points_balance) {
+                throw ValidationException::withMessages(['points_to_redeem' => 'Saldo poin pelanggan tidak mencukupi.']);
+            }
+
+            $pointsDiscount = $this->redeemCustomerPointsAction->discount($pointsRedeemed, max($subtotal - $voucherDiscount, 0));
+            $discountTotal = $voucherDiscount + $pointsDiscount;
             $taxableAmount = max($subtotal - $discountTotal, 0);
             $taxTotal = round($taxableAmount * ((float) $team->tax_rate / 100), 2);
             $grandTotal = $taxableAmount + $taxTotal;
             $paidAmount = (float) $data['paid_amount'];
-            $this->validatePaidAmount($paidAmount);
+            $this->validatePaidAmount($paidAmount, $diningTable !== null);
 
             $changeAmount = max($paidAmount - $grandTotal, 0);
             ['status' => $status, 'paymentStatus' => $paymentStatus] = PaymentStatusResolver::resolve($grandTotal, $paidAmount);
+            $cashierShift = CashierShift::query()
+                ->where('team_id', $team->id)
+                ->where('user_id', $cashier->id)
+                ->where('status', CashierShift::STATUS_OPEN)
+                ->first();
 
             $transaction = Transaction::create([
                 'team_id' => $team->id,
                 'user_id' => $cashier->id,
+                'cashier_shift_id' => $cashierShift?->id,
                 'voucher_id' => $voucher?->id,
+                'customer_id' => $customer?->id,
+                'dining_table_id' => $diningTable?->id,
                 'invoice_number' => DocumentNumberGenerator::generate('POS', 'transactions', 'invoice_number', $team->id),
-                'customer_name' => $data['customer_name'] ?? null,
+                'customer_name' => $customer?->name ?? ($data['customer_name'] ?? null),
+                'customer_phone' => $customer?->phone ?? ($data['customer_phone'] ?? null),
+                'customer_email' => $customer?->email ?? ($data['customer_email'] ?? null),
                 'status' => $status,
                 'payment_status' => $paymentStatus,
                 'payment_method' => $data['payment_method'],
                 'subtotal' => $subtotal,
                 'discount_total' => $discountTotal,
+                'points_redeemed' => $pointsRedeemed,
+                'points_discount_total' => $pointsDiscount,
                 'tax_total' => $taxTotal,
                 'grand_total' => $grandTotal,
                 'paid_amount' => $paidAmount,
@@ -109,6 +144,20 @@ class CreatePosTransactionAction
                 'note' => $data['note'] ?? null,
                 'paid_at' => $paymentStatus === Transaction::PAYMENT_STATUS_UNPAID ? null : now(),
             ]);
+
+            if ($paidAmount > 0) {
+                TransactionPayment::create([
+                    'team_id' => $team->id,
+                    'transaction_id' => $transaction->id,
+                    'cashier_shift_id' => $cashierShift?->id,
+                    'user_id' => $cashier->id,
+                    'payment_method' => $data['payment_method'],
+                    'amount' => min($paidAmount, $grandTotal),
+                    'tendered_amount' => $paidAmount,
+                    'change_amount' => $changeAmount,
+                    'received_at' => now(),
+                ]);
+            }
 
             foreach ($items as $item) {
                 $transaction->items()->create($this->transactionItemPayload($item));
@@ -129,7 +178,23 @@ class CreatePosTransactionAction
                 $voucher->increment('used_count');
             }
 
-            return $transaction->load(['items', 'cashier:id,name', 'voucher:id,code,name']);
+            if ($customer && $pointsRedeemed > 0) {
+                $this->redeemCustomerPointsAction->execute($customer, $transaction, $pointsRedeemed);
+            }
+
+            if ($customer) {
+                $this->earnCustomerPointsAction->execute($customer->fresh(), $transaction);
+            }
+
+            if ($diningTable) {
+                $diningTable->update([
+                    'status' => $paymentStatus === Transaction::PAYMENT_STATUS_PAID
+                        ? DiningTable::STATUS_AVAILABLE
+                        : DiningTable::STATUS_OCCUPIED,
+                ]);
+            }
+
+            return $transaction->load(['items', 'cashier:id,name', 'voucher:id,code,name', 'customer', 'diningTable']);
         });
     }
 
@@ -145,13 +210,37 @@ class CreatePosTransactionAction
             ->keyBy('id');
     }
 
-    private function validatePaidAmount(float $paidAmount): void
+    private function validatePaidAmount(float $paidAmount, bool $isTableOrder): void
     {
-        if ($paidAmount <= 0) {
+        if ($paidAmount < 0 || ($paidAmount === 0.0 && ! $isTableOrder)) {
             throw ValidationException::withMessages([
-                'paid_amount' => 'Jumlah bayar wajib diisi.',
+                'paid_amount' => $isTableOrder ? 'Jumlah bayar tidak boleh negatif.' : 'Jumlah bayar wajib diisi.',
             ]);
         }
+    }
+
+    private function resolveCustomer(Team $team, mixed $customerId): ?Customer
+    {
+        if (! $customerId) {
+            return null;
+        }
+
+        return Customer::query()->where('team_id', $team->id)->lockForUpdate()->findOrFail($customerId);
+    }
+
+    private function resolveDiningTable(Team $team, mixed $tableId): ?DiningTable
+    {
+        if (! $tableId) {
+            return null;
+        }
+
+        $table = DiningTable::query()->where('team_id', $team->id)->lockForUpdate()->findOrFail($tableId);
+
+        if ($table->status === DiningTable::STATUS_OCCUPIED) {
+            throw ValidationException::withMessages(['dining_table_id' => 'Meja sedang memiliki pesanan aktif.']);
+        }
+
+        return $table;
     }
 
     private function transactionItemPayload(array $item): array
@@ -390,6 +479,7 @@ class CreatePosTransactionAction
 
         $voucher = Voucher::where('team_id', $team->id)
             ->where('code', strtoupper($code))
+            ->lockForUpdate()
             ->first();
 
         if (! $voucher || ! $voucher->isUsableFor($subtotal)) {
@@ -400,6 +490,4 @@ class CreatePosTransactionAction
 
         return $voucher;
     }
-
-
 }

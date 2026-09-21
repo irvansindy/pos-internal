@@ -8,7 +8,6 @@ import {
     Plus,
     Search,
     Trash2,
-    X,
 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 
@@ -43,10 +42,12 @@ function buildUrl(path: string, teamSlug: string): string {
 
 function flattenMenus(menus: Menu[]): Menu[] {
     let flattened: Menu[] = [];
+
     for (const menu of menus) {
         flattened.push(menu);
         flattened = flattened.concat(flattenMenus(menu.children || []));
     }
+
     return flattened;
 }
 
@@ -588,13 +589,17 @@ function MenuRow({
     onToggleExpand,
     onEdit,
     onDelete,
+    canUpdate,
+    canDelete,
     searchQuery,
 }: {
     menu: Menu;
     expanded: boolean;
     onToggleExpand: () => void;
-    onEdit: () => void;
-    onDelete: () => void;
+    onEdit: (menu: Menu) => void;
+    onDelete: (menu: Menu) => void;
+    canUpdate: boolean;
+    canDelete: boolean;
     searchQuery: string;
 }) {
     const hasChildren = menu.children && menu.children.length > 0;
@@ -742,71 +747,75 @@ function MenuRow({
                 )}
 
                 {/* Action Buttons */}
-                <button
-                    onClick={onEdit}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '6px',
-                        border: 'none',
-                        backgroundColor: 'transparent',
-                        color: 'var(--muted-foreground)',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={(e) => {
-                        (
-                            e.currentTarget as HTMLButtonElement
-                        ).style.backgroundColor = 'var(--secondary)';
-                        (e.currentTarget as HTMLButtonElement).style.color =
-                            'var(--secondary-foreground)';
-                    }}
-                    onMouseLeave={(e) => {
-                        (
-                            e.currentTarget as HTMLButtonElement
-                        ).style.backgroundColor = 'transparent';
-                        (e.currentTarget as HTMLButtonElement).style.color =
-                            'var(--muted-foreground)';
-                    }}
-                >
-                    <Edit2 size={16} />
-                </button>
+                {canUpdate && (
+                    <button
+                        onClick={() => onEdit(menu)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            backgroundColor: 'transparent',
+                            color: 'var(--muted-foreground)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={(e) => {
+                            (
+                                e.currentTarget as HTMLButtonElement
+                            ).style.backgroundColor = 'var(--secondary)';
+                            (e.currentTarget as HTMLButtonElement).style.color =
+                                'var(--secondary-foreground)';
+                        }}
+                        onMouseLeave={(e) => {
+                            (
+                                e.currentTarget as HTMLButtonElement
+                            ).style.backgroundColor = 'transparent';
+                            (e.currentTarget as HTMLButtonElement).style.color =
+                                'var(--muted-foreground)';
+                        }}
+                    >
+                        <Edit2 size={16} />
+                    </button>
+                )}
 
-                <button
-                    onClick={onDelete}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '6px',
-                        border: 'none',
-                        backgroundColor: 'transparent',
-                        color: 'var(--muted-foreground)',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={(e) => {
-                        (
-                            e.currentTarget as HTMLButtonElement
-                        ).style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-                        (e.currentTarget as HTMLButtonElement).style.color =
-                            'hsl(0 84% 60%)';
-                    }}
-                    onMouseLeave={(e) => {
-                        (
-                            e.currentTarget as HTMLButtonElement
-                        ).style.backgroundColor = 'transparent';
-                        (e.currentTarget as HTMLButtonElement).style.color =
-                            'var(--muted-foreground)';
-                    }}
-                >
-                    <Trash2 size={16} />
-                </button>
+                {canDelete && (
+                    <button
+                        onClick={() => onDelete(menu)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            backgroundColor: 'transparent',
+                            color: 'var(--muted-foreground)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={(e) => {
+                            (
+                                e.currentTarget as HTMLButtonElement
+                            ).style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                            (e.currentTarget as HTMLButtonElement).style.color =
+                                'hsl(0 84% 60%)';
+                        }}
+                        onMouseLeave={(e) => {
+                            (
+                                e.currentTarget as HTMLButtonElement
+                            ).style.backgroundColor = 'transparent';
+                            (e.currentTarget as HTMLButtonElement).style.color =
+                                'var(--muted-foreground)';
+                        }}
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                )}
             </div>
 
             {/* Children */}
@@ -821,6 +830,8 @@ function MenuRow({
                             menu={child}
                             onEdit={onEdit}
                             onDelete={onDelete}
+                            canUpdate={canUpdate}
+                            canDelete={canDelete}
                             searchQuery={searchQuery}
                         />
                     </div>
@@ -834,11 +845,15 @@ function MenuTreeNode({
     menu,
     onEdit,
     onDelete,
+    canUpdate,
+    canDelete,
     searchQuery,
 }: {
     menu: Menu;
-    onEdit: () => void;
-    onDelete: () => void;
+    onEdit: (menu: Menu) => void;
+    onDelete: (menu: Menu) => void;
+    canUpdate: boolean;
+    canDelete: boolean;
     searchQuery: string;
 }) {
     const [expanded, setExpanded] = useState(false);
@@ -850,6 +865,8 @@ function MenuTreeNode({
             onToggleExpand={() => setExpanded(!expanded)}
             onEdit={onEdit}
             onDelete={onDelete}
+            canUpdate={canUpdate}
+            canDelete={canDelete}
             searchQuery={searchQuery}
         />
     );
@@ -858,7 +875,6 @@ function MenuTreeNode({
 // ─── Main Component ────────────────────────────────────────
 export default function MenuManagementIndex({
     menus,
-    allPermissions,
     availableParents,
     canCreate,
     canUpdate,
@@ -871,11 +887,11 @@ export default function MenuManagementIndex({
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingMenu, setEditingMenu] = useState<Menu | null>(null);
     const [deletingMenu, setDeletingMenu] = useState<Menu | null>(null);
-    const [expandedMenus, setExpandedMenus] = useState<Set<number>>(new Set());
-
     // Filter menus based on search
     const filteredMenus = useMemo(() => {
-        if (!searchQuery) return menus;
+        if (!searchQuery) {
+            return menus;
+        }
 
         const search = searchQuery.toLowerCase();
         const allFlat = flattenMenus(menus);
@@ -890,7 +906,9 @@ export default function MenuManagementIndex({
         );
 
         // If no matches, return original
-        if (matchingIds.size === 0) return menus;
+        if (matchingIds.size === 0) {
+            return menus;
+        }
 
         // Rebuild tree showing only matching and their parents
         function filterTree(items: Menu[]): Menu[] {
@@ -1035,8 +1053,10 @@ export default function MenuManagementIndex({
                             <MenuTreeNode
                                 key={menu.id}
                                 menu={menu}
-                                onEdit={() => setEditingMenu(menu)}
-                                onDelete={() => setDeletingMenu(menu)}
+                                onEdit={setEditingMenu}
+                                onDelete={setDeletingMenu}
+                                canUpdate={canUpdate}
+                                canDelete={canDelete}
                                 searchQuery={searchQuery}
                             />
                         ))

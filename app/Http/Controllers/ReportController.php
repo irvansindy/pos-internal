@@ -8,6 +8,7 @@ use App\Models\TransactionItem;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -313,7 +314,7 @@ class ReportController extends Controller
 
     // ─── Helpers ────────────────────────────────────────────────────────────
 
-    private function buildTopProducts(mixed $team, CarbonInterface $from, CarbonInterface $to): \Illuminate\Support\Collection
+    private function buildTopProducts(mixed $team, CarbonInterface $from, CarbonInterface $to): Collection
     {
         return TransactionItem::query()
             ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')

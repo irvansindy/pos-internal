@@ -49,39 +49,52 @@ function actionLabel(action: Activity['action']): string {
 }
 
 function actionIcon(action: Activity['action']) {
-    if (action === 'created') return <Zap size={14} />;
-    if (action === 'deleted') return <Trash2 size={14} />;
+    if (action === 'created') {
+        return <Zap size={14} />;
+    }
+
+    if (action === 'deleted') {
+        return <Trash2 size={14} />;
+    }
+
     return <Edit2 size={14} />;
 }
 
-function actionColor(
-    action: Activity['action'],
-): { bg: string; text: string } {
+function actionColor(action: Activity['action']): { bg: string; text: string } {
     const map = {
         created: { bg: 'hsl(142 76% 92%)', text: 'hsl(142 76% 30%)' },
         updated: { bg: 'hsl(214 100% 95%)', text: 'hsl(214 100% 40%)' },
         deleted: { bg: 'hsl(0 72% 94%)', text: 'hsl(0 72% 40%)' },
     };
+
     return map[action];
 }
 
 const FIELD_LABELS: Record<string, string> = {
-    name:        'Nama',
+    name: 'Nama',
     description: 'Deskripsi',
-    type:        'Tipe',
-    is_active:   'Status',
-    starts_at:   'Berlaku Mulai',
-    ends_at:     'Berlaku Sampai',
+    type: 'Tipe',
+    is_active: 'Status',
+    starts_at: 'Berlaku Mulai',
+    ends_at: 'Berlaku Sampai',
 };
 
 function formatValue(value: ActivityChange['before']): string {
-    if (value === null || value === undefined || value === '') return '-';
-    if (typeof value === 'boolean') return value ? 'Aktif' : 'Nonaktif';
+    if (value === null || value === undefined || value === '') {
+        return '-';
+    }
+
+    if (typeof value === 'boolean') {
+        return value ? 'Aktif' : 'Nonaktif';
+    }
+
     return String(value);
 }
 
 function formatChanges(changes: Activity['changes']): string {
-    if (!changes || Object.keys(changes).length === 0) return '-';
+    if (!changes || Object.keys(changes).length === 0) {
+        return '-';
+    }
 
     return Object.entries(changes)
         .map(
@@ -241,6 +254,7 @@ export default function ProductPromotionHistory({
                             ) : (
                                 activity.data.map((item) => {
                                     const color = actionColor(item.action);
+
                                     return (
                                         <tr
                                             key={item.id}
@@ -259,7 +273,9 @@ export default function ProductPromotionHistory({
                                             >
                                                 {formatDate(item.created_at)}
                                             </td>
-                                            <td style={{ padding: '12px 16px' }}>
+                                            <td
+                                                style={{ padding: '12px 16px' }}
+                                            >
                                                 <span
                                                     style={{
                                                         display: 'inline-flex',

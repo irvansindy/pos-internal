@@ -1,8 +1,8 @@
 import { Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { useAppearance } from '@/hooks/use-appearance';
 import type { Appearance } from '@/hooks/use-appearance';
+import { cn } from '@/lib/utils';
 
 type ThemeToggleProps = {
     compact?: boolean;
@@ -14,8 +14,8 @@ const themeOptions: {
     label: string;
     Icon: typeof Moon;
 }[] = [
-    { value: 'light', label: 'Light', Icon: Sun },
-    { value: 'dark', label: 'Dark', Icon: Moon },
+    { value: 'light', label: 'Terang', Icon: Sun },
+    { value: 'dark', label: 'Gelap', Icon: Moon },
 ];
 
 export default function ThemeToggle({
@@ -34,10 +34,11 @@ export default function ThemeToggle({
                 className,
             )}
             role="group"
-            aria-label="Toggle theme"
+            aria-label="Pilih tema tampilan"
         >
             {themeOptions.map(({ value, label, Icon }) => {
                 const isActive = activeAppearance === value;
+
                 return (
                     <Button
                         key={value}

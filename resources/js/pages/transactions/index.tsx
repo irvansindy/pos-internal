@@ -8,7 +8,7 @@ import {
     Trash2,
     X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 interface Transaction {
     id: number;
@@ -144,44 +144,29 @@ const defaultForm = (): TransactionFormState => ({
 });
 
 function TransactionModal({
-    open,
     onClose,
     teamSlug,
     editing,
     paymentMethods,
 }: {
-    open: boolean;
     onClose: () => void;
     teamSlug: string;
     editing: Transaction | null;
     paymentMethods: Array<{ value: string; label: string }>;
 }) {
-    const [form, setForm] = useState<TransactionFormState>(defaultForm());
-
-    useEffect(() => {
-        if (!open) {
-            return;
-        }
-
-        if (!editing) {
-            setForm(defaultForm());
-            return;
-        }
-
-        setForm({
-            customer_name: editing.customer_name ?? '',
-            grand_total: editing.grand_total ?? '0',
-            transaction_date: editing.created_at.slice(0, 10),
-            payment_method: editing.payment_method ?? 'cash',
-            payment_status: editing.payment_status,
-            paid_amount: editing.paid_amount ?? '0',
-            note: editing.note ?? '',
-        });
-    }, [editing, open]);
-
-    if (!open) {
-        return null;
-    }
+    const [form, setForm] = useState<TransactionFormState>(() =>
+        editing
+            ? {
+                  customer_name: editing.customer_name ?? '',
+                  grand_total: editing.grand_total ?? '0',
+                  transaction_date: editing.created_at.slice(0, 10),
+                  payment_method: editing.payment_method ?? 'cash',
+                  payment_status: editing.payment_status,
+                  paid_amount: editing.paid_amount ?? '0',
+                  note: editing.note ?? '',
+              }
+            : defaultForm(),
+    );
 
     const submit = () => {
         const payload = {
@@ -203,6 +188,7 @@ function TransactionModal({
                     onSuccess: onClose,
                 },
             );
+
             return;
         }
 
@@ -805,13 +791,15 @@ export default function TransactionsIndex(props: TransactionsPageProps) {
                 )}
             </div>
 
-            <TransactionModal
-                open={modalOpen}
-                onClose={() => setModalOpen(false)}
-                teamSlug={props.teamSlug}
-                editing={editing}
-                paymentMethods={props.paymentMethods}
-            />
+            {modalOpen && (
+                <TransactionModal
+                    key={editing?.id ?? 'new'}
+                    onClose={() => setModalOpen(false)}
+                    teamSlug={props.teamSlug}
+                    editing={editing}
+                    paymentMethods={props.paymentMethods}
+                />
+            )}
         </>
     );
 }

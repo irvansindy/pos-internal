@@ -10,10 +10,10 @@ return new class extends Migration
     {
         $tableNames = config('permission.table_names');
         $columnNames = config('permission.column_names');
-        $pivotRole       = $columnNames['role_pivot_key']       ?? 'role_id';
+        $pivotRole = $columnNames['role_pivot_key'] ?? 'role_id';
         $pivotPermission = $columnNames['permission_pivot_key'] ?? 'permission_id';
-        $modelMorphKey   = $columnNames['model_morph_key']      ?? 'model_id';
-        $teamForeignKey  = $columnNames['team_foreign_key']     ?? 'team_id';
+        $modelMorphKey = $columnNames['model_morph_key'] ?? 'model_id';
+        $teamForeignKey = $columnNames['team_foreign_key'] ?? 'team_id';
 
         Schema::create($tableNames['permissions'], function (Blueprint $table) {
             $table->bigIncrements('id');
@@ -43,7 +43,7 @@ return new class extends Migration
 
         // ── model_has_permissions ─────────────────────────────
         // WAJIB punya team_id jika config permission.teams = true
-        Schema::create($tableNames['model_has_permissions'], function (Blueprint $table) use ($tableNames, $columnNames, $pivotPermission, $modelMorphKey, $teamForeignKey) {
+        Schema::create($tableNames['model_has_permissions'], function (Blueprint $table) use ($tableNames, $pivotPermission, $modelMorphKey, $teamForeignKey) {
             $table->unsignedBigInteger($pivotPermission);
             $table->string('model_type');
             $table->unsignedBigInteger($modelMorphKey);
@@ -64,7 +64,7 @@ return new class extends Migration
         });
 
         // ── model_has_roles ───────────────────────────────────
-        Schema::create($tableNames['model_has_roles'], function (Blueprint $table) use ($tableNames, $columnNames, $pivotRole, $modelMorphKey, $teamForeignKey) {
+        Schema::create($tableNames['model_has_roles'], function (Blueprint $table) use ($tableNames, $pivotRole, $modelMorphKey, $teamForeignKey) {
             $table->unsignedBigInteger($pivotRole);
             $table->string('model_type');
             $table->unsignedBigInteger($modelMorphKey);

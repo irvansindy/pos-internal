@@ -42,12 +42,13 @@ export default function ReviewCustomPlanRequestModal({
                         <>
                             <DialogHeader>
                                 <DialogTitle>
-                                    Review Permintaan — {request.organizationName}
+                                    Review Permintaan —{' '}
+                                    {request.organizationName}
                                 </DialogTitle>
                                 <DialogDescription>
                                     Diajukan oleh {request.requestedByName} (
-                                    {request.requestedByEmail}) · Toko saat
-                                    ini: {request.currentStoreCount}
+                                    {request.requestedByEmail}) · Toko saat ini:{' '}
+                                    {request.currentStoreCount}
                                 </DialogDescription>
                             </DialogHeader>
 
@@ -57,7 +58,11 @@ export default function ReviewCustomPlanRequestModal({
                                 </p>
                             ) : null}
 
-                            <input type="hidden" name="decision" value={decision} />
+                            <input
+                                type="hidden"
+                                name="decision"
+                                value={decision}
+                            />
 
                             {decision === 'approve' ? (
                                 <div className="space-y-4">
@@ -77,9 +82,7 @@ export default function ReviewCustomPlanRequestModal({
                                             required
                                         />
                                         <InputError
-                                            message={
-                                                errors.approved_max_stores
-                                            }
+                                            message={errors.approved_max_stores}
                                         />
                                     </div>
 
@@ -98,9 +101,7 @@ export default function ReviewCustomPlanRequestModal({
                                             required
                                         />
                                         <InputError
-                                            message={
-                                                errors.approved_max_owners
-                                            }
+                                            message={errors.approved_max_owners}
                                         />
                                     </div>
                                 </div>

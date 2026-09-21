@@ -2,6 +2,16 @@
 
 Dokumen ini mendeskripsikan struktur database aplikasi berdasarkan seluruh file migration yang ada di `database/migrations/`. Aplikasi ini adalah sistem **multi-tenant** (berbasis `team_id`) dengan modul utama: autentikasi & RBAC, katalog produk (termasuk paket/bundling dengan addon), promosi, dan transaksi POS (point of sale) lengkap dengan refund/return.
 
+## Operasional kasir harian
+
+`cashier_shifts` menyimpan sesi kerja kasir, modal awal, snapshot komponen kas, kas fisik terhitung, dan selisih penutupan. `open_guard` bernilai `{team_id}:{user_id}` selama shift aktif dan menjadi `NULL` ketika ditutup.
+
+`cashier_cash_movements` menyimpan kas masuk atau kas keluar non-penjualan dengan kategori, catatan, pengguna, toko, dan waktu kejadian.
+
+`transaction_payments` merupakan ledger setiap penerimaan pembayaran POS. Kolom `amount` adalah nilai yang diterapkan ke tagihan, sedangkan `tendered_amount` dan `change_amount` mempertahankan nilai uang yang diterima dan kembaliannya.
+
+`transactions`, `transaction_refunds`, dan `transaction_returns` memiliki relasi opsional ke `cashier_shifts`. Return juga menyimpan `refund_method` untuk memastikan rekonsiliasi tunai tidak mencampur metode pembayaran lain.
+
 ## Daftar Isi
 
 - [1. Konvensi Umum](#1-konvensi-umum)
@@ -221,7 +231,7 @@ Pivot menu ↔ permission — satu menu hanya tampil jika user memiliki permissi
 |---|---|---|
 | `team_id` | unsignedBigInteger, index | FK → `teams`, cascade delete |
 | `category_id` | unsignedBigInteger, nullable | FK → `product_categories`, `nullOnDelete` |
-| `sku` | string | unique |
+| `sku` | string | unique per team bersama `team_id` |
 | `name` | string | |
 | `description` | text, nullable | |
 | `price` | decimal(15,2) | harga jual |
@@ -487,4 +497,26 @@ Beberapa hal yang perlu diperhatikan tim saat mengembangkan lebih lanjut:
 
 ---
 
-*Dokumen ini dihasilkan berdasarkan isi seluruh file di `database/migrations/` per tanggal migration terakhir `2026_05_29`. Perbarui dokumen ini setiap kali ada migration baru yang mengubah skema.*
+## 15. Control Plane Provider
+
+### `platform_admin_audits`
+
+Jejak perubahan sensitif yang dilakukan platform admin di luar scope satu toko.
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `organization_id` | foreignId, nullable | Tenant terkait; `null` untuk objek global seperti katalog paket |
+| `actor_id` | foreignId, nullable | Platform admin pelaku; `nullOnDelete` |
+| `action` | string, index | Identitas tindakan, misalnya `subscription.status_updated` |
+| `target_type`, `target_id` | string/unsignedBigInteger | Target polymorphic manual dan index gabungan |
+| `before`, `after` | json, nullable | Snapshot sebelum dan sesudah perubahan |
+| `reason` | text | Alasan atau konteks tindakan provider |
+| `ip_address` | string(45), nullable | Alamat IP request |
+| `user_agent` | string(500), nullable | User agent request |
+
+Tabel ini hanya ditulis melalui action control plane dan tidak memiliki endpoint
+update/delete.
+
+---
+
+*Dokumen ini diperbarui berdasarkan migration hingga `2026_09_19`.*

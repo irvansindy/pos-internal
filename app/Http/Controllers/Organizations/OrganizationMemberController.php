@@ -57,6 +57,7 @@ class OrganizationMemberController extends Controller
                 ->get()
                 ->map(fn ($invitation) => [
                     'id' => $invitation->id,
+                    'code' => $invitation->code,
                     'email' => $invitation->email,
                     'role' => $invitation->role->value,
                     'roleLabel' => $invitation->role->label(),

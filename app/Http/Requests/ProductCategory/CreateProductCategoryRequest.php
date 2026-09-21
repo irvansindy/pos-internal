@@ -14,7 +14,7 @@ class CreateProductCategoryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255', 'unique:product_categories,name,NULL,id,team_id,' . $this->user()->currentTeam->id],
+            'name' => ['required', 'string', 'max:255', 'unique:product_categories,name,NULL,id,team_id,'.$this->user()->currentTeam->id],
             'description' => ['nullable', 'string', 'max:500'],
             'is_active' => ['boolean'],
         ];

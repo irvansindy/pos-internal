@@ -18,7 +18,7 @@ class ProductPackageAddonGroup extends Model
 
     protected $casts = [
         'is_required' => 'boolean',
-        'sort_order'  => 'integer',
+        'sort_order' => 'integer',
     ];
 
     public function package(): BelongsTo

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Team;
+use App\Actions\Pos\VoidTransactionAction;
 use App\Models\Transaction;
 use App\Models\TransactionAudit;
 use App\Notifications\TransactionNotification;
@@ -10,6 +10,7 @@ use App\Support\DocumentNumberGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class TransactionController extends Controller
@@ -45,7 +46,9 @@ class TransactionController extends Controller
             'completed' => $team->transactions()->where('status', Transaction::STATUS_COMPLETED)->count(),
             'pending' => $team->transactions()->where('status', Transaction::STATUS_PENDING)->count(),
             'void' => $team->transactions()->where('status', Transaction::STATUS_VOID)->count(),
-            'revenue' => (string) $team->transactions()->sum('grand_total'),
+            'revenue' => (string) $team->transactions()
+                ->where('status', Transaction::STATUS_COMPLETED)
+                ->sum('grand_total'),
         ];
 
         return Inertia::render('transactions/index', [
@@ -140,6 +143,15 @@ class TransactionController extends Controller
         abort_unless($user->ownsTeam($team), 403, 'Hanya owner yang dapat mengubah transaksi.');
         abort_unless($transaction->team_id === $team->id, 404);
 
+        if ($transaction->status === Transaction::STATUS_VOID
+            || $transaction->items()->exists()
+            || $transaction->refunds()->exists()
+            || $transaction->returns()->exists()) {
+            throw ValidationException::withMessages([
+                'transaction' => 'Transaksi POS, transaksi batal, atau transaksi yang sudah memiliki refund/return tidak dapat diedit langsung.',
+            ]);
+        }
+
         $validated = $request->validate([
             'customer_name' => ['required', 'string', 'max:255'],
             'grand_total' => ['required', 'numeric', 'min:0'],
@@ -191,21 +203,29 @@ class TransactionController extends Controller
         return back()->with('success', 'Transaksi berhasil diperbarui.');
     }
 
-    public function destroy(Request $request, string $currentTeam, Transaction $transaction)
+    public function destroy(Request $request, string $currentTeam, Transaction $transaction, VoidTransactionAction $voidTransactionAction)
     {
         $team = $request->user()?->currentTeam;
         $user = $request->user();
 
         abort_if(! $team, 403, 'Tidak ada tim aktif.');
-        abort_unless($user->ownsTeam($team), 403, 'Hanya owner yang dapat menghapus transaksi.');
+        abort_unless($user->ownsTeam($team), 403, 'Hanya owner yang dapat membatalkan transaksi.');
         abort_unless($transaction->team_id === $team->id, 404);
 
         $snapshot = $transaction->toArray();
+        $voided = $voidTransactionAction->execute(
+            $team,
+            $transaction,
+            $user,
+            'Dibatalkan dari manajemen transaksi.',
+        );
 
-        $this->recordAudit($transaction, 'deleted', ['record' => $snapshot]);
-        $transaction->delete();
+        $this->recordAudit($voided, 'voided', [
+            'before' => $snapshot,
+            'after' => $voided->toArray(),
+        ]);
 
-        return back()->with('success', 'Transaksi berhasil dihapus.');
+        return back()->with('success', 'Transaksi berhasil dibatalkan dan tetap disimpan sebagai audit trail.');
     }
 
     public function export(Request $request)
@@ -366,5 +386,4 @@ class TransactionController extends Controller
 
         Notification::send($members, new TransactionNotification($transaction, $action));
     }
-
 }

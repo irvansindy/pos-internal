@@ -17,15 +17,15 @@ use Inertia\Response;
 class ProductPromotionController extends Controller
 {
     public function __construct(
-        private readonly CreateProductPromotionAction   $createAction,
-        private readonly UpdateProductPromotionAction   $updateAction,
-        private readonly DeleteProductPromotionAction   $deleteAction,
+        private readonly CreateProductPromotionAction $createAction,
+        private readonly UpdateProductPromotionAction $updateAction,
+        private readonly DeleteProductPromotionAction $deleteAction,
         private readonly RecordProductActivityLogAction $recordActivity,
     ) {}
 
     public function index(Request $request): Response
     {
-        $team     = $request->user()->currentTeam;
+        $team = $request->user()->currentTeam;
         $authUser = $request->user();
 
         abort_unless($team->members()->where('users.id', $authUser->id)->exists(), 403);
@@ -54,19 +54,19 @@ class ProductPromotionController extends Controller
             ->get(['id', 'name', 'sku', 'price']);
 
         return Inertia::render('product-promotions/index', [
-            'promotions'     => $promotions,
+            'promotions' => $promotions,
             'recentActivity' => $recentActivity,
-            'products'       => $products,
-            'teamSlug'       => $team->slug,
-            'canCreate'      => $authUser->canOnCurrentTeam('product-promotion.create'),
-            'canUpdate'      => $authUser->canOnCurrentTeam('product-promotion.update'),
-            'canDelete'      => $authUser->canOnCurrentTeam('product-promotion.delete'),
+            'products' => $products,
+            'teamSlug' => $team->slug,
+            'canCreate' => $authUser->canOnCurrentTeam('product-promotion.create'),
+            'canUpdate' => $authUser->canOnCurrentTeam('product-promotion.update'),
+            'canDelete' => $authUser->canOnCurrentTeam('product-promotion.delete'),
         ]);
     }
 
     public function store(CreateProductPromotionRequest $request)
     {
-        $team     = $request->user()->currentTeam;
+        $team = $request->user()->currentTeam;
         $authUser = $request->user();
 
         abort_unless($team->members()->where('users.id', $authUser->id)->exists(), 403);
@@ -75,16 +75,16 @@ class ProductPromotionController extends Controller
         $promotion = $this->createAction->execute($team, $request->validated());
 
         $this->recordActivity->execute(
-            team:          $team,
-            user:          $authUser,
-            subjectType:   ProductPromotion::class,
-            subjectId:     $promotion->id,
-            subjectName:   $promotion->name,
-            action:        ProductActivityLog::ACTION_CREATED,
-            changes:       $this->buildChanges([], $promotion->only($this->activityFields())),
-            note:          "Promosi '{$promotion->name}' dibuat.",
+            team: $team,
+            user: $authUser,
+            subjectType: ProductPromotion::class,
+            subjectId: $promotion->id,
+            subjectName: $promotion->name,
+            action: ProductActivityLog::ACTION_CREATED,
+            changes: $this->buildChanges([], $promotion->only($this->activityFields())),
+            note: "Promosi '{$promotion->name}' dibuat.",
             referenceType: ProductPromotion::class,
-            referenceId:   $promotion->id,
+            referenceId: $promotion->id,
         );
 
         Inertia::flash('success', "Promosi '{$promotion->name}' berhasil dibuat.");
@@ -94,14 +94,14 @@ class ProductPromotionController extends Controller
 
     public function update(UpdateProductPromotionRequest $request)
     {
-        $team     = $request->user()->currentTeam;
+        $team = $request->user()->currentTeam;
         $authUser = $request->user();
 
         abort_unless($team->members()->where('users.id', $authUser->id)->exists(), 403);
         setPermissionsTeamId($team->id);
 
         $promotion = $this->resolvePromotion($request);
-        $before    = $promotion->only($this->activityFields());
+        $before = $promotion->only($this->activityFields());
 
         $this->updateAction->execute($promotion, $request->validated());
         $promotion->refresh();
@@ -110,16 +110,16 @@ class ProductPromotionController extends Controller
 
         if ($changes !== []) {
             $this->recordActivity->execute(
-                team:          $team,
-                user:          $authUser,
-                subjectType:   ProductPromotion::class,
-                subjectId:     $promotion->id,
-                subjectName:   $promotion->name,
-                action:        ProductActivityLog::ACTION_UPDATED,
-                changes:       $changes,
-                note:          "Promosi '{$promotion->name}' diperbarui.",
+                team: $team,
+                user: $authUser,
+                subjectType: ProductPromotion::class,
+                subjectId: $promotion->id,
+                subjectName: $promotion->name,
+                action: ProductActivityLog::ACTION_UPDATED,
+                changes: $changes,
+                note: "Promosi '{$promotion->name}' diperbarui.",
                 referenceType: ProductPromotion::class,
-                referenceId:   $promotion->id,
+                referenceId: $promotion->id,
             );
         }
 
@@ -130,27 +130,27 @@ class ProductPromotionController extends Controller
 
     public function destroy(Request $request)
     {
-        $team     = $request->user()->currentTeam;
+        $team = $request->user()->currentTeam;
         $authUser = $request->user();
 
         abort_unless($team->members()->where('users.id', $authUser->id)->exists(), 403);
         setPermissionsTeamId($team->id);
 
         $promotion = $this->resolvePromotion($request);
-        $name      = $promotion->name;
-        $before    = $promotion->only($this->activityFields());
+        $name = $promotion->name;
+        $before = $promotion->only($this->activityFields());
 
         $this->recordActivity->execute(
-            team:          $team,
-            user:          $authUser,
-            subjectType:   ProductPromotion::class,
-            subjectId:     $promotion->id,
-            subjectName:   $name,
-            action:        ProductActivityLog::ACTION_DELETED,
-            changes:       $this->buildChanges($before, []),
-            note:          "Promosi '{$name}' dihapus.",
+            team: $team,
+            user: $authUser,
+            subjectType: ProductPromotion::class,
+            subjectId: $promotion->id,
+            subjectName: $name,
+            action: ProductActivityLog::ACTION_DELETED,
+            changes: $this->buildChanges($before, []),
+            note: "Promosi '{$name}' dihapus.",
             referenceType: ProductPromotion::class,
-            referenceId:   $promotion->id,
+            referenceId: $promotion->id,
         );
 
         $this->deleteAction->execute($promotion);
@@ -162,22 +162,22 @@ class ProductPromotionController extends Controller
 
     public function history(Request $request): Response
     {
-        $team     = $request->user()->currentTeam;
+        $team = $request->user()->currentTeam;
         $authUser = $request->user();
 
         abort_unless($team->members()->where('users.id', $authUser->id)->exists(), 403);
         setPermissionsTeamId($team->id);
 
         $promotion = $this->resolvePromotion($request);
-        $activity  = $promotion->activityLogs()
+        $activity = $promotion->activityLogs()
             ->with('user:id,name')
             ->latest()
             ->paginate(20);
 
         return Inertia::render('product-promotions/history', [
             'promotion' => $promotion,
-            'activity'  => $activity,
-            'teamSlug'  => $team->slug,
+            'activity' => $activity,
+            'teamSlug' => $team->slug,
             'canUpdate' => $authUser->canOnCurrentTeam('product-promotion.update'),
             'canDelete' => $authUser->canOnCurrentTeam('product-promotion.delete'),
         ]);
@@ -210,7 +210,7 @@ class ProductPromotionController extends Controller
             ->mapWithKeys(fn (string $key) => [
                 $key => [
                     'before' => $before[$key] ?? null,
-                    'after'  => $after[$key] ?? null,
+                    'after' => $after[$key] ?? null,
                 ],
             ])
             ->all();

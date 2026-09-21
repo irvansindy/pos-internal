@@ -29,6 +29,7 @@ class FixUserSetup extends Command
 
             if (! $user) {
                 $this->warn("User tidak ditemukan: {$email}");
+
                 continue;
             }
 
@@ -51,7 +52,7 @@ class FixUserSetup extends Command
 
             if (! empty($updates)) {
                 $user->update($updates);
-                $this->info("Fixed {$email}: " . implode(', ', array_keys($updates)));
+                $this->info("Fixed {$email}: ".implode(', ', array_keys($updates)));
             } else {
                 $this->line("OK {$email} (tidak perlu diubah)");
             }

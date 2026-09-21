@@ -26,6 +26,7 @@ import {
     PackageOpen,
     BookOpen,
     FolderGit2,
+    Banknote,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
@@ -68,6 +69,7 @@ const iconMap: Record<string, LucideIcon> = {
     Box,
     RotateCcw,
     PackageOpen,
+    Banknote,
     // Fallback
     default: LayoutGrid,
 };
@@ -85,7 +87,11 @@ function buildUrl(routeName: string, teamSlug: string): string {
         'products.index': `/${teamSlug}/products`,
         'product-categories.index': `/${teamSlug}/product-categories`,
         'product-stocks.index': `/${teamSlug}/product-stocks`,
+        'inventory-operations.index': `/${teamSlug}/inventory-operations`,
+        'customers.index': `/${teamSlug}/customers`,
+        'dining-tables.index': `/${teamSlug}/dining-tables`,
         'pos.index': `/${teamSlug}/pos`,
+        'cashier-operations.index': `/${teamSlug}/cashier-operations`,
         'transactions.index': `/${teamSlug}/transactions`,
         'transactions.refunds': `/${teamSlug}/transactions/refunds`,
         'transactions.returns': `/${teamSlug}/transactions/returns`,
@@ -96,19 +102,22 @@ function buildUrl(routeName: string, teamSlug: string): string {
         'settings.system': `/${teamSlug}/settings/system`,
         'settings.membership': `/${teamSlug}/settings/membership`,
     };
-    return routeMap[routeName] ?? `/${teamSlug}/dashboard`;
+
+    return routeMap[routeName] ?? '#';
 }
 
 interface NavItemFromServer {
     name: string;
     label: string;
     route: string | null;
+    href: string | null;
     icon: string;
     module: string | null;
     children: Array<{
         name: string;
         label: string;
         route: string;
+        href: string | null;
         icon?: string;
     }>;
 }
@@ -123,7 +132,8 @@ export function AppSidebar() {
     // Convert server nav items ke format NavItem yang dipakai NavMain
     const mainNavItems: NavItem[] = navItemsFromServer.map((item) => {
         const Icon = iconMap[item.icon] ?? iconMap.default;
-        const href = item.route ? buildUrl(item.route, teamSlug) : '#';
+        const href =
+            item.href ?? (item.route ? buildUrl(item.route, teamSlug) : '#');
 
         return {
             title: item.label,
@@ -134,7 +144,7 @@ export function AppSidebar() {
                 item.children.length > 0
                     ? item.children.map((child) => ({
                           title: child.label,
-                          href: buildUrl(child.route, teamSlug),
+                          href: child.href ?? buildUrl(child.route, teamSlug),
                       }))
                     : undefined,
         };

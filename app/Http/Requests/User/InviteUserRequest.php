@@ -15,7 +15,7 @@ class InviteUserRequest extends FormRequest
     {
         return [
             'email' => ['required', 'email', 'max:255'],
-            'role'  => ['required', 'string', 'in:admin,member'],
+            'role' => ['required', 'string', 'in:admin,member'],
         ];
     }
 
@@ -23,9 +23,9 @@ class InviteUserRequest extends FormRequest
     {
         return [
             'email.required' => 'Email wajib diisi.',
-            'email.email'    => 'Format email tidak valid.',
-            'role.required'  => 'Role wajib dipilih.',
-            'role.in'        => 'Role tidak valid.',
+            'email.email' => 'Format email tidak valid.',
+            'role.required' => 'Role wajib dipilih.',
+            'role.in' => 'Role tidak valid.',
         ];
     }
 }

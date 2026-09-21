@@ -10,6 +10,7 @@ use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\User;
 use App\Notifications\Organizations\CustomPlanRequestReviewedNotification;
+use App\Support\PlatformAuditLogger;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -29,6 +30,11 @@ class ReviewCustomPlanRequestAction
     ): CustomPlanRequest {
         $request = DB::transaction(function () use ($request, $reviewer, $approvedMaxStores, $approvedMaxOwners) {
             $organization = Organization::whereKey($request->organization_id)->lockForUpdate()->firstOrFail();
+            $before = [
+                'status' => $request->status->value,
+                'requested_max_stores' => $request->requested_max_stores,
+                'requested_max_owners' => $request->requested_max_owners,
+            ];
 
             $customPlan = Plan::findByCode(PlanCode::Custom);
 
@@ -66,7 +72,23 @@ class ReviewCustomPlanRequestAction
                 'reviewed_at' => now(),
             ]);
 
-            return $request->fresh();
+            $request = $request->fresh();
+
+            app(PlatformAuditLogger::class)->record(
+                actor: $reviewer,
+                action: 'custom_plan_request.approved',
+                target: $request,
+                reason: 'Permintaan paket custom disetujui.',
+                organization: $organization,
+                before: $before,
+                after: [
+                    'status' => $request->status->value,
+                    'approved_max_stores' => $approvedMaxStores,
+                    'approved_max_owners' => $approvedMaxOwners,
+                ],
+            );
+
+            return $request;
         });
 
         $request->requestedBy->notify(new CustomPlanRequestReviewedNotification($request));
@@ -80,13 +102,27 @@ class ReviewCustomPlanRequestAction
      */
     public function reject(CustomPlanRequest $request, User $reviewer): CustomPlanRequest
     {
-        $request->update([
-            'status' => CustomPlanRequestStatus::Rejected,
-            'reviewed_by' => $reviewer->id,
-            'reviewed_at' => now(),
-        ]);
+        $request = DB::transaction(function () use ($request, $reviewer) {
+            $request->update([
+                'status' => CustomPlanRequestStatus::Rejected,
+                'reviewed_by' => $reviewer->id,
+                'reviewed_at' => now(),
+            ]);
 
-        $request = $request->fresh();
+            $request = $request->fresh();
+
+            app(PlatformAuditLogger::class)->record(
+                actor: $reviewer,
+                action: 'custom_plan_request.rejected',
+                target: $request,
+                reason: 'Permintaan paket custom ditolak.',
+                organization: $request->organization,
+                before: ['status' => CustomPlanRequestStatus::Pending->value],
+                after: ['status' => $request->status->value],
+            );
+
+            return $request;
+        });
 
         $request->requestedBy->notify(new CustomPlanRequestReviewedNotification($request));
 

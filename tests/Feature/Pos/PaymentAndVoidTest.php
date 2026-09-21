@@ -181,7 +181,7 @@ test('the owner can void a transaction through the POS endpoint', function () {
     expect($product->fresh()->stock)->toBe(50);
 });
 
-test('the void transaction endpoint requires owner access', function () {
+test('the void transaction endpoint requires the dedicated void permission', function () {
     $owner = User::factory()->create();
     $team = $owner->currentTeam;
     $product = posProduct($team);
@@ -203,7 +203,32 @@ test('the void transaction endpoint requires owner access', function () {
         ->actingAs($cashier)
         ->post("/{$team->slug}/pos/transaction/{$transaction->id}/void", ['reason' => 'test']);
 
-    $response->assertForbidden();
+    $response->assertRedirect();
     expect($transaction->fresh()->status)->toBe(Transaction::STATUS_COMPLETED);
     expect($product->fresh()->stock)->toBe(49);
+});
+
+test('a team member with the void permission can void without transaction create permission', function () {
+    $owner = User::factory()->create();
+    $team = $owner->currentTeam;
+    $product = posProduct($team);
+    $transaction = app(CreatePosTransactionAction::class)->execute($team, $owner, [
+        'items' => [['item_type' => 'product', 'product_id' => $product->id, 'quantity' => 1]],
+        'payment_method' => 'cash',
+        'paid_amount' => 20000,
+    ]);
+
+    $supervisor = User::factory()->create();
+    $team->members()->attach($supervisor, ['role' => TeamRole::Member->value]);
+    $supervisor->switchTeam($team);
+
+    setPermissionsTeamId($team->id);
+    $supervisor->givePermissionTo(Permission::findOrCreate('transaction.void', 'web'));
+
+    $this->actingAs($supervisor)
+        ->post("/{$team->slug}/pos/transaction/{$transaction->id}/void", ['reason' => 'Salah input'])
+        ->assertRedirect();
+
+    expect($transaction->fresh()->status)->toBe(Transaction::STATUS_VOID)
+        ->and($product->fresh()->stock)->toBe(50);
 });

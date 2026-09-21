@@ -55,6 +55,21 @@ export interface PaymentMethod {
     label: string;
 }
 
+export interface PosCustomer {
+    id: number;
+    name: string;
+    phone: string;
+    email: string | null;
+    points_balance: number;
+}
+
+export interface PosDiningTable {
+    id: number;
+    name: string;
+    capacity: number;
+    status: 'available' | 'occupied' | 'reserved';
+}
+
 // ─── Recent Transactions ──────────────────────────────────────────────────────
 
 export interface RecentTransactionItem {
@@ -71,11 +86,18 @@ export interface RecentTransaction {
     id: number;
     invoice_number: string;
     customer_name: string | null;
+    customer_phone?: string | null;
+    customer_email?: string | null;
+    customer_id?: number | null;
+    dining_table_id?: number | null;
     status: 'pending' | 'completed' | 'void';
     payment_status: 'unpaid' | 'partial' | 'paid';
     payment_method: string | null;
     subtotal: string;
     discount_total: string;
+    points_redeemed?: number;
+    points_discount_total?: string;
+    tax_total?: string;
     grand_total: string;
     paid_amount: string;
     change_amount: string;

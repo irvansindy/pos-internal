@@ -63,6 +63,7 @@ export type OrganizationMember = {
 
 export type OrganizationPendingInvitation = {
     id: number;
+    code: string;
     email: string;
     role: 'owner' | 'manager';
     roleLabel: string;

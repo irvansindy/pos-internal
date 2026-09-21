@@ -3,9 +3,12 @@
 namespace App\Actions\Transaction;
 
 use App\Actions\ProductStock\AdjustProductStockAction;
+use App\Models\CashierShift;
 use App\Models\ProductStockMovement;
 use App\Models\Team;
+use App\Models\Transaction;
 use App\Models\TransactionItem;
+use App\Models\TransactionRefund;
 use App\Models\TransactionReturn;
 use App\Models\User;
 use App\Support\DocumentNumberGenerator;
@@ -24,9 +27,27 @@ class CreateTransactionReturnAction
             $item = TransactionItem::query()
                 ->whereKey($data['transaction_item_id'])
                 ->whereHas('transaction', fn ($query) => $query->where('team_id', $team->id))
-                ->with(['transaction:id,team_id,invoice_number,customer_name', 'product'])
+                ->with('product')
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            $transaction = Transaction::query()
+                ->where('team_id', $team->id)
+                ->whereKey($item->transaction_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($transaction->status !== Transaction::STATUS_COMPLETED) {
+                throw ValidationException::withMessages([
+                    'transaction_item_id' => 'Return hanya dapat dibuat untuk transaksi selesai.',
+                ]);
+            }
+
+            if (! in_array($transaction->payment_status, [Transaction::PAYMENT_STATUS_PAID, Transaction::PAYMENT_STATUS_PARTIAL], true)) {
+                throw ValidationException::withMessages([
+                    'transaction_item_id' => 'Return hanya dapat dibuat untuk transaksi yang sudah menerima pembayaran.',
+                ]);
+            }
 
             if (! $item->product_id) {
                 throw ValidationException::withMessages([
@@ -47,9 +68,33 @@ class CreateTransactionReturnAction
             }
 
             $status = $data['status'] ?? TransactionReturn::STATUS_APPROVED;
+            $maximumItemRefund = $this->defaultRefundAmount($item, $quantity);
             $refundAmount = isset($data['refund_amount'])
                 ? (float) $data['refund_amount']
-                : $this->defaultRefundAmount($item, $quantity);
+                : $maximumItemRefund;
+
+            if ($refundAmount > $maximumItemRefund) {
+                throw ValidationException::withMessages([
+                    'refund_amount' => 'Nominal refund melebihi nilai item yang direturn.',
+                ]);
+            }
+
+            if ($status === TransactionReturn::STATUS_APPROVED) {
+                $refunded = (float) $transaction->refunds()
+                    ->where('status', TransactionRefund::STATUS_APPROVED)
+                    ->sum('amount');
+                $returned = (float) $transaction->returns()
+                    ->where('status', TransactionReturn::STATUS_APPROVED)
+                    ->sum('refund_amount');
+                $collected = min((float) $transaction->paid_amount, (float) $transaction->grand_total);
+                $remainingRefund = max($collected - $refunded - $returned, 0);
+
+                if ($refundAmount > $remainingRefund) {
+                    throw ValidationException::withMessages([
+                        'refund_amount' => 'Nominal refund melebihi sisa pembayaran yang dapat dikembalikan.',
+                    ]);
+                }
+            }
 
             $return = TransactionReturn::create([
                 'team_id' => $team->id,
@@ -57,9 +102,15 @@ class CreateTransactionReturnAction
                 'transaction_item_id' => $item->id,
                 'product_id' => $item->product_id,
                 'user_id' => $user->id,
+                'cashier_shift_id' => CashierShift::query()
+                    ->where('team_id', $team->id)
+                    ->where('user_id', $user->id)
+                    ->where('status', CashierShift::STATUS_OPEN)
+                    ->value('id'),
                 'return_number' => DocumentNumberGenerator::generate('RTN', 'transaction_returns', 'return_number', $team->id),
                 'quantity' => $quantity,
                 'refund_amount' => $refundAmount,
+                'refund_method' => $data['refund_method'] ?? $transaction->payment_method ?? 'cash',
                 'restock' => (bool) ($data['restock'] ?? true),
                 'status' => $status,
                 'reason' => $data['reason'] ?? null,
@@ -92,5 +143,4 @@ class CreateTransactionReturnAction
 
         return $unitNet * $quantity;
     }
-
 }

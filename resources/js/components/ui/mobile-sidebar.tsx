@@ -19,6 +19,7 @@ interface NavChild {
     name: string;
     label: string;
     route: string;
+    href?: string | null;
     icon?: string;
 }
 
@@ -26,6 +27,7 @@ interface NavItem {
     name: string;
     label: string;
     route: string | null;
+    href?: string | null;
     icon: string;
     module: string | null;
     children: NavChild[];
@@ -53,6 +55,9 @@ function buildUrl(routeName: string, teamSlug: string): string {
         'product-stocks.index':     `/${teamSlug}/product-stocks`,
         'product-packages.index':   `/${teamSlug}/product-packages`,
         'product-promotions.index': `/${teamSlug}/product-promotions`,
+        'inventory-operations.index': `/${teamSlug}/inventory-operations`,
+        'customers.index':          `/${teamSlug}/customers`,
+        'dining-tables.index':      `/${teamSlug}/dining-tables`,
         'pos.index':                `/${teamSlug}/pos`,
         'transactions.index':       `/${teamSlug}/transactions`,
         'transactions.refunds':     `/${teamSlug}/transactions/refunds`,
@@ -64,7 +69,7 @@ function buildUrl(routeName: string, teamSlug: string): string {
         'settings.system':          `/${teamSlug}/settings/system`,
         'settings.membership':      `/${teamSlug}/settings/membership`,
     };
-    return routeMap[routeName] ?? `/${teamSlug}/dashboard`;
+    return routeMap[routeName] ?? '#';
 }
 
 // ─── Icon Map ─────────────────────────────────────────────
@@ -102,7 +107,7 @@ function NavLink({
     onNavigate?: () => void;
 }) {
     const Icon = iconMap[item.icon ?? ''];
-    const href = buildUrl(item.route, teamSlug);
+    const href = item.href ?? buildUrl(item.route, teamSlug);
     const isActive = currentPath === href || currentPath.startsWith(href + '/');
 
     const base: React.CSSProperties = {
@@ -153,9 +158,9 @@ function NavGroup({
     onNavigate?: () => void;
 }) {
     const Icon = iconMap[item.icon];
-    const href = item.route ? buildUrl(item.route, teamSlug) : null;
+    const href = item.href ?? (item.route ? buildUrl(item.route, teamSlug) : null);
     const hasActiveChild = item.children.some(c => {
-        const childHref = buildUrl(c.route, teamSlug);
+        const childHref = c.href ?? buildUrl(c.route, teamSlug);
         return currentPath === childHref || currentPath.startsWith(childHref + '/');
     });
     const isDirectActive = href ? currentPath === href : false;
@@ -165,7 +170,7 @@ function NavGroup({
     if (item.children.length === 0 && href) {
         return (
             <NavLink
-                item={{ name: item.name, label: item.label, route: item.route!, icon: item.icon }}
+                item={{ name: item.name, label: item.label, route: item.route!, href: item.href, icon: item.icon }}
                 teamSlug={teamSlug}
                 currentPath={currentPath}
                 onNavigate={onNavigate}

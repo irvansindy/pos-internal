@@ -21,9 +21,9 @@ use Spatie\Permission\Models\Role;
 class RoleController extends Controller
 {
     public function __construct(
-        private readonly CreateRoleAction          $createRole,
-        private readonly UpdateRoleAction          $updateRole,
-        private readonly DeleteRoleAction          $deleteRole,
+        private readonly CreateRoleAction $createRole,
+        private readonly UpdateRoleAction $updateRole,
+        private readonly DeleteRoleAction $deleteRole,
         private readonly SyncRolePermissionsAction $syncRolePermissions,
     ) {}
 
@@ -73,11 +73,11 @@ class RoleController extends Controller
             ->get(['id', 'name', 'label', 'description', 'module'])
             ->groupBy(fn (Permission $permission) => $permission->module ?? 'general')
             ->map(fn (Collection $permissions) => $permissions->map(fn (Permission $permission) => [
-                'id'          => $permission->id,
-                'name'        => $permission->name,
-                'label'       => $permission->label ?? $permission->name,
+                'id' => $permission->id,
+                'name' => $permission->name,
+                'label' => $permission->label ?? $permission->name,
                 'description' => $permission->description,
-                'module'      => $permission->module ?? 'general',
+                'module' => $permission->module ?? 'general',
             ])->values());
     }
 
@@ -88,7 +88,7 @@ class RoleController extends Controller
         $this->authorizeDeveloper($request);
 
         $authUser = $request->user();
-        $team     = $authUser->currentTeam;
+        $team = $authUser->currentTeam;
 
         setPermissionsTeamId($team->id);
 
@@ -107,33 +107,33 @@ class RoleController extends Controller
             ->keyBy('id');
 
         $roles = $roleModels->map(fn (Role $role) => [
-            'id'                => $role->id,
-            'name'              => $role->name,
-            'label'             => $role->label ?? ucfirst($role->name),
-            'description'       => $role->description,
-            'is_system'         => $role->is_system,
-            'is_global'         => $role->team_id === null,
-            'team'              => $teams->has($role->team_id) ? [
-                'id'   => $teams->get($role->team_id)->id,
+            'id' => $role->id,
+            'name' => $role->name,
+            'label' => $role->label ?? ucfirst($role->name),
+            'description' => $role->description,
+            'is_system' => $role->is_system,
+            'is_global' => $role->team_id === null,
+            'team' => $teams->has($role->team_id) ? [
+                'id' => $teams->get($role->team_id)->id,
                 'name' => $teams->get($role->team_id)->name,
                 'slug' => $teams->get($role->team_id)->slug,
             ] : null,
             'permissions_count' => $role->permissions_count,
-            'users_count'       => $role->users_count,
-            'permissions'       => $role->permissions->pluck('name'),
+            'users_count' => $role->users_count,
+            'permissions' => $role->permissions->pluck('name'),
         ]);
 
         return Inertia::render('roles/index', [
-            'roles'          => $roles,
+            'roles' => $roles,
             'allPermissions' => $this->permissionsByModule(),
-            'currentTeam'    => [
-                'id'   => $team->id,
+            'currentTeam' => [
+                'id' => $team->id,
                 'name' => $team->name,
                 'slug' => $team->slug,
             ],
-            'canCreate'          => $authUser->canOnCurrentTeam('role.create'),
-            'canUpdate'          => $authUser->canOnCurrentTeam('role.update'),
-            'canDelete'          => $authUser->canOnCurrentTeam('role.delete'),
+            'canCreate' => $authUser->canOnCurrentTeam('role.create'),
+            'canUpdate' => $authUser->canOnCurrentTeam('role.update'),
+            'canDelete' => $authUser->canOnCurrentTeam('role.delete'),
             'canAssignPermission' => $authUser->canOnCurrentTeam('permission.assign'),
         ]);
     }
@@ -146,8 +146,8 @@ class RoleController extends Controller
 
         return Inertia::render('roles/create', [
             'allPermissions' => $this->permissionsByModule(),
-            'currentTeam'    => [
-                'id'   => $team->id,
+            'currentTeam' => [
+                'id' => $team->id,
                 'name' => $team->name,
                 'slug' => $team->slug,
             ],
@@ -158,7 +158,7 @@ class RoleController extends Controller
     {
         $this->authorizeDeveloper($request);
 
-        $team      = $request->user()->currentTeam;
+        $team = $request->user()->currentTeam;
         $validated = $request->validated();
 
         $role = $this->createRole->execute(
@@ -190,23 +190,23 @@ class RoleController extends Controller
 
         return Inertia::render('roles/show', [
             'role' => [
-                'id'          => $role->id,
-                'name'        => $role->name,
-                'label'       => $role->label ?? ucfirst($role->name),
+                'id' => $role->id,
+                'name' => $role->name,
+                'label' => $role->label ?? ucfirst($role->name),
                 'description' => $role->description,
-                'is_system'   => $role->is_system,
-                'is_global'   => $role->team_id === null,
+                'is_system' => $role->is_system,
+                'is_global' => $role->team_id === null,
                 'permissions' => $role->permissions->map(fn (Permission $permission) => [
-                    'id'          => $permission->id,
-                    'name'        => $permission->name,
-                    'label'       => $permission->label ?? $permission->name,
+                    'id' => $permission->id,
+                    'name' => $permission->name,
+                    'label' => $permission->label ?? $permission->name,
                     'description' => $permission->description,
-                    'module'      => $permission->module ?? 'general',
+                    'module' => $permission->module ?? 'general',
                 ]),
             ],
-            'users'       => $users,
+            'users' => $users,
             'currentTeam' => [
-                'id'   => $team->id,
+                'id' => $team->id,
                 'name' => $team->name,
                 'slug' => $team->slug,
             ],
@@ -224,17 +224,17 @@ class RoleController extends Controller
 
         return Inertia::render('roles/edit', [
             'role' => [
-                'id'          => $role->id,
-                'name'        => $role->name,
-                'label'       => $role->label ?? ucfirst($role->name),
+                'id' => $role->id,
+                'name' => $role->name,
+                'label' => $role->label ?? ucfirst($role->name),
                 'description' => $role->description,
-                'is_system'   => $role->is_system,
-                'is_global'   => $role->team_id === null,
+                'is_system' => $role->is_system,
+                'is_global' => $role->team_id === null,
                 'permissions' => $role->permissions->pluck('name'),
             ],
             'allPermissions' => $this->permissionsByModule(),
-            'currentTeam'    => [
-                'id'   => $team->id,
+            'currentTeam' => [
+                'id' => $team->id,
                 'name' => $team->name,
                 'slug' => $team->slug,
             ],
@@ -245,8 +245,8 @@ class RoleController extends Controller
     {
         $this->authorizeDeveloper($request);
 
-        $role      = $this->resolveRole($request);
-        $team      = $this->authorizeTeamRole($request, $role);
+        $role = $this->resolveRole($request);
+        $team = $this->authorizeTeamRole($request, $role);
         $validated = $request->validated();
 
         $this->updateRole->execute(
@@ -294,8 +294,8 @@ class RoleController extends Controller
     {
         $this->authorizeDeveloper($request);
 
-        $role      = $this->resolveRole($request);
-        $team      = $this->authorizeTeamRole($request, $role);
+        $role = $this->resolveRole($request);
+        $team = $this->authorizeTeamRole($request, $role);
         $validated = $request->validated();
 
         $this->syncRolePermissions->execute(

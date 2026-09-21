@@ -18,10 +18,10 @@ use Inertia\Response;
 class MenuController extends Controller
 {
     public function __construct(
-        private readonly CreateMenuAction         $createMenu,
-        private readonly UpdateMenuAction         $updateMenu,
-        private readonly DeleteMenuAction         $deleteMenu,
-        private readonly SyncMenuStructureAction  $syncMenuStructure,
+        private readonly CreateMenuAction $createMenu,
+        private readonly UpdateMenuAction $updateMenu,
+        private readonly DeleteMenuAction $deleteMenu,
+        private readonly SyncMenuStructureAction $syncMenuStructure,
     ) {}
 
     /**
@@ -31,6 +31,7 @@ class MenuController extends Controller
     private function resolveMenu(Request $request): Menu
     {
         $menuId = $request->route('menuId');
+
         return Menu::findOrFail($menuId);
     }
 
@@ -40,7 +41,7 @@ class MenuController extends Controller
     public function index(Request $request): Response
     {
         $authUser = $request->user();
-        $team     = $authUser->currentTeam;
+        $team = $authUser->currentTeam;
 
         setPermissionsTeamId($team->id);
 
@@ -65,12 +66,12 @@ class MenuController extends Controller
             ->map(fn ($m) => ['value' => $m->id, 'label' => $m->label]);
 
         return Inertia::render('menus/index', [
-            'menus'             => $menus,
-            'allPermissions'    => $allPermissions,
-            'availableParents'  => $availableParents,
-            'canCreate'         => $authUser->canOnCurrentTeam('role.update'),
-            'canUpdate'         => $authUser->canOnCurrentTeam('role.update'),
-            'canDelete'         => $authUser->canOnCurrentTeam('role.update'),
+            'menus' => $menus,
+            'allPermissions' => $allPermissions,
+            'availableParents' => $availableParents,
+            'canCreate' => $authUser->canOnCurrentTeam('role.update'),
+            'canUpdate' => $authUser->canOnCurrentTeam('role.update'),
+            'canDelete' => $authUser->canOnCurrentTeam('role.update'),
         ]);
     }
 
@@ -137,17 +138,17 @@ class MenuController extends Controller
     private function mapMenuToArray(Menu $menu): array
     {
         return [
-            'id'          => $menu->id,
-            'name'        => $menu->name,
-            'label'       => $menu->label,
-            'route'       => $menu->route,
-            'icon'        => $menu->icon,
-            'module'      => $menu->module,
-            'sort_order'  => $menu->sort_order,
-            'is_active'   => $menu->is_active,
-            'parent_id'   => $menu->parent_id,
+            'id' => $menu->id,
+            'name' => $menu->name,
+            'label' => $menu->label,
+            'route' => $menu->route,
+            'icon' => $menu->icon,
+            'module' => $menu->module,
+            'sort_order' => $menu->sort_order,
+            'is_active' => $menu->is_active,
+            'parent_id' => $menu->parent_id,
             'permissions' => $menu->permissions->pluck('name')->toArray(),
-            'children'    => $menu->children->map(fn ($child) => $this->mapMenuToArray($child))->toArray(),
+            'children' => $menu->children->map(fn ($child) => $this->mapMenuToArray($child))->toArray(),
         ];
     }
 }

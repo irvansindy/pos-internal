@@ -50,16 +50,6 @@ function currency(value: string | number | null): string {
     }).format(amount);
 }
 
-function movementTypeLabel(type: string): string {
-    const labels: Record<string, string> = {
-        in: 'Stok Masuk',
-        out: 'Stok Keluar',
-        adjustment: 'Penyesuaian',
-    };
-
-    return labels[type] ?? type;
-}
-
 function buildUrl(teamSlug: string, path: string): string {
     return `/${teamSlug}${path}`;
 }
@@ -77,7 +67,10 @@ export default function StockReport({
 
     const movementByType = useMemo(() => {
         const map: Record<string, MovementSummaryRow> = {};
-        movementSummary.forEach((row) => { map[row.type] = row; });
+        movementSummary.forEach((row) => {
+            map[row.type] = row;
+        });
+
         return map;
     }, [movementSummary]);
 
@@ -90,6 +83,7 @@ export default function StockReport({
 
     const exportHref = useMemo(() => {
         const params = new URLSearchParams({ type: 'stock', ...range });
+
         return `${buildUrl(teamSlug, '/reports/export')}?${params.toString()}`;
     }, [range, teamSlug]);
 
@@ -101,8 +95,12 @@ export default function StockReport({
                 {/* Header */}
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <p className="text-sm font-medium text-slate-500">Modul laporan</p>
-                        <h1 className="text-2xl font-semibold text-slate-900">Laporan Stok</h1>
+                        <p className="text-sm font-medium text-slate-500">
+                            Modul laporan
+                        </p>
+                        <h1 className="text-2xl font-semibold text-slate-900">
+                            Laporan Stok
+                        </h1>
                     </div>
 
                     {canExport && (
@@ -118,13 +116,29 @@ export default function StockReport({
 
                 {/* Position summary (point-in-time, no date filter needed) */}
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <SummaryCard label="Total produk aktif" value={summary.total_products.toLocaleString('id-ID')} />
-                    <SummaryCard label="Total unit stok" value={summary.total_stock_units.toLocaleString('id-ID')} />
-                    <SummaryCard label="Nilai inventory" value={currency(summary.total_stock_value)} tone="text-emerald-600" />
+                    <SummaryCard
+                        label="Total produk aktif"
+                        value={summary.total_products.toLocaleString('id-ID')}
+                    />
+                    <SummaryCard
+                        label="Total unit stok"
+                        value={summary.total_stock_units.toLocaleString(
+                            'id-ID',
+                        )}
+                    />
+                    <SummaryCard
+                        label="Nilai inventory"
+                        value={currency(summary.total_stock_value)}
+                        tone="text-emerald-600"
+                    />
                     <SummaryCard
                         label="Stok menipis"
                         value={summary.low_stock_count.toLocaleString('id-ID')}
-                        tone={summary.low_stock_count > 0 ? 'text-red-600' : 'text-slate-900'}
+                        tone={
+                            summary.low_stock_count > 0
+                                ? 'text-red-600'
+                                : 'text-slate-900'
+                        }
                     />
                 </div>
 
@@ -140,7 +154,12 @@ export default function StockReport({
                                 type="date"
                                 className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
                                 value={range.date_from}
-                                onChange={(e) => setRange((r) => ({ ...r, date_from: e.target.value }))}
+                                onChange={(e) =>
+                                    setRange((r) => ({
+                                        ...r,
+                                        date_from: e.target.value,
+                                    }))
+                                }
                             />
                         </label>
                         <label className="flex min-w-[180px] flex-col gap-2 text-sm text-slate-700">
@@ -149,7 +168,12 @@ export default function StockReport({
                                 type="date"
                                 className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
                                 value={range.date_to}
-                                onChange={(e) => setRange((r) => ({ ...r, date_to: e.target.value }))}
+                                onChange={(e) =>
+                                    setRange((r) => ({
+                                        ...r,
+                                        date_to: e.target.value,
+                                    }))
+                                }
                             />
                         </label>
                         <button
@@ -165,29 +189,56 @@ export default function StockReport({
                 <div className="grid gap-4 lg:grid-cols-3">
                     {/* Movement summary */}
                     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <h2 className="mb-4 text-sm font-semibold text-slate-900">Ringkasan Pergerakan Stok</h2>
+                        <h2 className="mb-4 text-sm font-semibold text-slate-900">
+                            Ringkasan Pergerakan Stok
+                        </h2>
                         <div className="space-y-3">
-                            <MovementRow label="Stok Masuk" row={movementByType.in} tone="text-emerald-600" />
-                            <MovementRow label="Stok Keluar" row={movementByType.out} tone="text-red-600" />
-                            <MovementRow label="Penyesuaian" row={movementByType.adjustment} tone="text-amber-600" />
+                            <MovementRow
+                                label="Stok Masuk"
+                                row={movementByType.in}
+                                tone="text-emerald-600"
+                            />
+                            <MovementRow
+                                label="Stok Keluar"
+                                row={movementByType.out}
+                                tone="text-red-600"
+                            />
+                            <MovementRow
+                                label="Penyesuaian"
+                                row={movementByType.adjustment}
+                                tone="text-amber-600"
+                            />
                         </div>
                     </div>
 
                     {/* Top moving products */}
                     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
-                        <h2 className="mb-4 text-sm font-semibold text-slate-900">Produk Paling Banyak Keluar</h2>
+                        <h2 className="mb-4 text-sm font-semibold text-slate-900">
+                            Produk Paling Banyak Keluar
+                        </h2>
 
                         {topMovingProducts.length === 0 ? (
-                            <p className="py-8 text-center text-sm text-slate-500">Belum ada pergerakan stok keluar.</p>
+                            <p className="py-8 text-center text-sm text-slate-500">
+                                Belum ada pergerakan stok keluar.
+                            </p>
                         ) : (
                             <div className="space-y-2">
                                 {topMovingProducts.map((product) => (
-                                    <div key={product.id} className="flex items-center justify-between text-sm">
+                                    <div
+                                        key={product.id}
+                                        className="flex items-center justify-between text-sm"
+                                    >
                                         <div>
-                                            <div className="font-medium text-slate-900">{product.name}</div>
-                                            <div className="text-xs text-slate-400">{product.sku}</div>
+                                            <div className="font-medium text-slate-900">
+                                                {product.name}
+                                            </div>
+                                            <div className="text-xs text-slate-400">
+                                                {product.sku}
+                                            </div>
                                         </div>
-                                        <span className="font-semibold text-slate-900">{product.total_out} unit</span>
+                                        <span className="font-semibold text-slate-900">
+                                            {product.total_out} unit
+                                        </span>
                                     </div>
                                 ))}
                             </div>
@@ -199,34 +250,60 @@ export default function StockReport({
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3">
                         <AlertTriangle className="h-4 w-4 text-amber-500" />
-                        <h2 className="text-sm font-semibold text-slate-900">Produk Stok Menipis</h2>
+                        <h2 className="text-sm font-semibold text-slate-900">
+                            Produk Stok Menipis
+                        </h2>
                     </div>
 
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-slate-100 text-left text-slate-500">
                                 <th className="px-4 py-2 font-medium">SKU</th>
-                                <th className="px-4 py-2 font-medium">Produk</th>
-                                <th className="px-4 py-2 font-medium">Kategori</th>
-                                <th className="px-4 py-2 text-right font-medium">Stok</th>
-                                <th className="px-4 py-2 text-right font-medium">Stok Minimum</th>
+                                <th className="px-4 py-2 font-medium">
+                                    Produk
+                                </th>
+                                <th className="px-4 py-2 font-medium">
+                                    Kategori
+                                </th>
+                                <th className="px-4 py-2 text-right font-medium">
+                                    Stok
+                                </th>
+                                <th className="px-4 py-2 text-right font-medium">
+                                    Stok Minimum
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             {lowStockProducts.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                                    <td
+                                        colSpan={5}
+                                        className="px-4 py-8 text-center text-slate-500"
+                                    >
                                         Semua produk dalam kondisi stok aman.
                                     </td>
                                 </tr>
                             ) : (
                                 lowStockProducts.map((product) => (
-                                    <tr key={product.id} className="border-b border-slate-50 last:border-0">
-                                        <td className="px-4 py-2.5 text-slate-500">{product.sku}</td>
-                                        <td className="px-4 py-2.5 font-medium text-slate-900">{product.name}</td>
-                                        <td className="px-4 py-2.5 text-slate-600">{product.category?.name ?? '-'}</td>
-                                        <td className="px-4 py-2.5 text-right font-semibold text-red-600">{product.stock}</td>
-                                        <td className="px-4 py-2.5 text-right text-slate-500">{product.min_stock}</td>
+                                    <tr
+                                        key={product.id}
+                                        className="border-b border-slate-50 last:border-0"
+                                    >
+                                        <td className="px-4 py-2.5 text-slate-500">
+                                            {product.sku}
+                                        </td>
+                                        <td className="px-4 py-2.5 font-medium text-slate-900">
+                                            {product.name}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-slate-600">
+                                            {product.category?.name ?? '-'}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right font-semibold text-red-600">
+                                            {product.stock}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right text-slate-500">
+                                            {product.min_stock}
+                                        </td>
                                     </tr>
                                 ))
                             )}
@@ -238,7 +315,15 @@ export default function StockReport({
     );
 }
 
-function SummaryCard({ label, value, tone = 'text-slate-900' }: { label: string; value: string; tone?: string }) {
+function SummaryCard({
+    label,
+    value,
+    tone = 'text-slate-900',
+}: {
+    label: string;
+    value: string;
+    tone?: string;
+}) {
     return (
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-sm text-slate-500">{label}</p>
@@ -247,13 +332,25 @@ function SummaryCard({ label, value, tone = 'text-slate-900' }: { label: string;
     );
 }
 
-function MovementRow({ label, row, tone }: { label: string; row?: MovementSummaryRow; tone: string }) {
+function MovementRow({
+    label,
+    row,
+    tone,
+}: {
+    label: string;
+    row?: MovementSummaryRow;
+    tone: string;
+}) {
     return (
         <div className="flex items-center justify-between text-sm">
             <span className="text-slate-600">{label}</span>
             <div className="text-right">
-                <div className={`font-semibold ${tone}`}>{(row?.total_quantity ?? 0).toLocaleString('id-ID')} unit</div>
-                <div className="text-xs text-slate-400">{row?.total_movements ?? 0} transaksi</div>
+                <div className={`font-semibold ${tone}`}>
+                    {(row?.total_quantity ?? 0).toLocaleString('id-ID')} unit
+                </div>
+                <div className="text-xs text-slate-400">
+                    {row?.total_movements ?? 0} transaksi
+                </div>
             </div>
         </div>
     );

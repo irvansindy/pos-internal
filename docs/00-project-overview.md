@@ -24,3 +24,9 @@ POS Internal adalah sistem Point Of Sales berbasis web yang digunakan untuk meng
 - Return
 - Voucher
 - Reporting
+- Dashboard konsolidasi multi-toko
+- Struk digital PDF, email, dan WhatsApp (Fonnte)
+- Transfer stok antar toko
+- Purchase Order dan stok opname
+- CRM pelanggan dan poin loyalti
+- Manajemen meja F&B

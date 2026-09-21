@@ -39,11 +39,10 @@ export default function CustomPlanRequestForm({
                 {pendingRequest ? (
                     <Alert>
                         <AlertDescription>
-                            Anda sudah punya permintaan yang sedang ditinjau
-                            ({pendingRequest.requested_max_stores ?? '—'}{' '}
-                            toko, {pendingRequest.requested_max_owners ?? '—'}{' '}
-                            owner). Mengirim form ini akan membuat permintaan
-                            baru.
+                            Anda sudah punya permintaan yang sedang ditinjau (
+                            {pendingRequest.requested_max_stores ?? '—'} toko,{' '}
+                            {pendingRequest.requested_max_owners ?? '—'} owner).
+                            Mengirim form ini akan membuat permintaan baru.
                         </AlertDescription>
                     </Alert>
                 ) : null}

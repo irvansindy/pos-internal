@@ -20,12 +20,12 @@ class CreateRoleAction
         setPermissionsTeamId($team->id);
 
         $role = Role::create([
-            'team_id'     => $team->id,
-            'name'        => $name,
-            'guard_name'  => 'web',
-            'label'       => $label,
+            'team_id' => $team->id,
+            'name' => $name,
+            'guard_name' => 'web',
+            'label' => $label,
             'description' => $description,
-            'is_system'   => false,
+            'is_system' => false,
         ]);
 
         $role->syncPermissions($permissions);

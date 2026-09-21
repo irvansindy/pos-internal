@@ -2,7 +2,6 @@
 
 use App\Enums\OrganizationRole;
 use App\Models\OrganizationInvitation;
-use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Support\Facades\Notification;
 

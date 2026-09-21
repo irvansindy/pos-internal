@@ -21,12 +21,10 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { edit as editTeam } from '@/routes/teams';
 import { store as checkoutStore } from '@/routes/organizations/checkout';
 import { create as createCustomPlanRequest } from '@/routes/organizations/custom-plan-request';
-import {
-    resume as resumeSubscription,
-} from '@/routes/organizations/subscription';
+import { resume as resumeSubscription } from '@/routes/organizations/subscription';
+import { edit as editTeam } from '@/routes/teams';
 import type {
     OrganizationPlan,
     OrganizationQuota,
@@ -58,7 +56,9 @@ function subscriptionBadgeVariant(status: OrganizationSubscription['status']) {
 }
 
 function formatRupiah(value: string | null) {
-    if (value === null) return 'Hubungi sales';
+    if (value === null) {
+        return 'Hubungi sales';
+    }
 
     const amount = Number(value);
 
@@ -88,7 +88,9 @@ export default function OrganizationStores({
             ? 0
             : Math.min(100, (quota.storeCount / quota.maxStores) * 100);
 
-    const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+    const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>(
+        'monthly',
+    );
     const [cancelModalOpen, setCancelModalOpen] = useState(false);
     const [downgradingCode, setDowngradingCode] = useState<string | null>(null);
 
@@ -122,7 +124,11 @@ export default function OrganizationStores({
                     />
 
                     {subscription ? (
-                        <Badge variant={subscriptionBadgeVariant(subscription.status)}>
+                        <Badge
+                            variant={subscriptionBadgeVariant(
+                                subscription.status,
+                            )}
+                        >
                             {subscription.planName} ·{' '}
                             {subscription.canceledAt
                                 ? 'Akan berakhir'
@@ -132,7 +138,10 @@ export default function OrganizationStores({
                 </div>
 
                 {/* ── Cancellation notice / cancel-subscription ── */}
-                {subscription && canManage && subscription.status !== 'canceled' && !subscription.isCustom ? (
+                {subscription &&
+                canManage &&
+                subscription.status !== 'canceled' &&
+                !subscription.isCustom ? (
                     subscription.canceledAt ? (
                         <Card className="border-destructive/50">
                             <CardContent className="flex items-center justify-between py-4">
@@ -140,7 +149,9 @@ export default function OrganizationStores({
                                     Langganan dijadwalkan berakhir pada{' '}
                                     <strong>
                                         {subscription.currentPeriodEnd
-                                            ? formatDate(subscription.currentPeriodEnd)
+                                            ? formatDate(
+                                                  subscription.currentPeriodEnd,
+                                              )
                                             : '-'}
                                     </strong>
                                     . Akses toko tetap normal sampai tanggal
@@ -186,11 +197,13 @@ export default function OrganizationStores({
                                 mulai{' '}
                                 <strong>
                                     {subscription.currentPeriodEnd
-                                        ? formatDate(subscription.currentPeriodEnd)
+                                        ? formatDate(
+                                              subscription.currentPeriodEnd,
+                                          )
                                         : 'akhir periode saat ini'}
                                 </strong>
-                                . Sampai saat itu, Anda tetap menikmati
-                                kuota paket {subscription.planName}.
+                                . Sampai saat itu, Anda tetap menikmati kuota
+                                paket {subscription.planName}.
                             </p>
                             <Form
                                 action="/settings/organization/subscription/cancel-downgrade"
@@ -214,9 +227,7 @@ export default function OrganizationStores({
                 {/* ── Quota usage ─────────────────────────────── */}
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-base">
-                            Kuota Toko
-                        </CardTitle>
+                        <CardTitle className="text-base">Kuota Toko</CardTitle>
                         <CardDescription>
                             {quota.maxStores === null
                                 ? `${quota.storeCount} toko digunakan · kuota tidak dibatasi (paket custom)`
@@ -240,8 +251,8 @@ export default function OrganizationStores({
 
                         {quota.isFull ? (
                             <p className="mt-3 text-sm text-destructive">
-                                Kuota toko pada paket Anda sudah penuh.
-                                Upgrade paket di bawah untuk menambah toko.
+                                Kuota toko pada paket Anda sudah penuh. Upgrade
+                                paket di bawah untuk menambah toko.
                             </p>
                         ) : null}
                     </CardContent>
@@ -259,13 +270,19 @@ export default function OrganizationStores({
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <span>
-                                            <Button disabled data-test="add-store-disabled">
+                                            <Button
+                                                disabled
+                                                data-test="add-store-disabled"
+                                            >
                                                 <Plus /> Tambah Toko
                                             </Button>
                                         </span>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Kuota toko sudah penuh — upgrade paket dulu</p>
+                                        <p>
+                                            Kuota toko sudah penuh — upgrade
+                                            paket dulu
+                                        </p>
                                     </TooltipContent>
                                 </Tooltip>
                             ) : (
@@ -385,8 +402,14 @@ export default function OrganizationStores({
                                 </CardContent>
                                 <CardFooter>
                                     {plan.isCustom ? (
-                                        <Button variant="outline" className="w-full" asChild>
-                                            <Link href={createCustomPlanRequest()}>
+                                        <Button
+                                            variant="outline"
+                                            className="w-full"
+                                            asChild
+                                        >
+                                            <Link
+                                                href={createCustomPlanRequest()}
+                                            >
                                                 Request Paket Custom
                                             </Link>
                                         </Button>
@@ -398,8 +421,13 @@ export default function OrganizationStores({
                                         <Button className="w-full" disabled>
                                             Hanya Owner
                                         </Button>
-                                    ) : subscription?.pendingPlanCode === plan.code ? (
-                                        <Button className="w-full" variant="outline" disabled>
+                                    ) : subscription?.pendingPlanCode ===
+                                      plan.code ? (
+                                        <Button
+                                            className="w-full"
+                                            variant="outline"
+                                            disabled
+                                        >
                                             Downgrade Terjadwal
                                         </Button>
                                     ) : plan.isDowngrade ? (
@@ -407,8 +435,12 @@ export default function OrganizationStores({
                                             type="button"
                                             variant="outline"
                                             className="w-full"
-                                            disabled={downgradingCode === plan.code}
-                                            onClick={() => handleDowngrade(plan)}
+                                            disabled={
+                                                downgradingCode === plan.code
+                                            }
+                                            onClick={() =>
+                                                handleDowngrade(plan)
+                                            }
                                             data-test={`downgrade-${plan.code}`}
                                         >
                                             {downgradingCode === plan.code

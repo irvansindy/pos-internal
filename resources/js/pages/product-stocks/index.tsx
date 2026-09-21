@@ -92,13 +92,25 @@ function movementIcon(type: MovementType) {
     return <SlidersHorizontal size={14} />;
 }
 
-function stockStatus(product: Product): { label: string; color: string; bg: string } {
+function stockStatus(product: Product): {
+    label: string;
+    color: string;
+    bg: string;
+} {
     if (product.stock <= 0) {
-        return { label: 'Habis', color: 'hsl(0 72% 40%)', bg: 'hsl(0 72% 94%)' };
+        return {
+            label: 'Habis',
+            color: 'hsl(0 72% 40%)',
+            bg: 'hsl(0 72% 94%)',
+        };
     }
 
     if (product.stock <= product.min_stock) {
-        return { label: 'Stok Rendah', color: 'hsl(43 96% 30%)', bg: 'hsl(43 96% 92%)' };
+        return {
+            label: 'Stok Rendah',
+            color: 'hsl(43 96% 30%)',
+            bg: 'hsl(43 96% 92%)',
+        };
     }
 
     return { label: 'Aman', color: 'hsl(142 76% 30%)', bg: 'hsl(142 76% 92%)' };
@@ -181,7 +193,13 @@ function Field({
             </label>
             {children}
             {error && (
-                <p style={{ margin: '4px 0 0 0', color: 'hsl(0 72% 50%)', fontSize: '12px' }}>
+                <p
+                    style={{
+                        margin: '4px 0 0 0',
+                        color: 'hsl(0 72% 50%)',
+                        fontSize: '12px',
+                    }}
+                >
                     {error}
                 </p>
             )}
@@ -245,10 +263,22 @@ function AdjustStockModal({
                     <Warehouse size={18} />
                 </div>
                 <div>
-                    <h3 style={{ margin: '0 0 3px 0', fontSize: '16px', fontWeight: 600 }}>
+                    <h3
+                        style={{
+                            margin: '0 0 3px 0',
+                            fontSize: '16px',
+                            fontWeight: 600,
+                        }}
+                    >
                         Adjust Stok
                     </h3>
-                    <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: '12px' }}>
+                    <p
+                        style={{
+                            margin: 0,
+                            color: 'var(--muted-foreground)',
+                            fontSize: '12px',
+                        }}
+                    >
                         {product.name} saat ini memiliki {product.stock} unit
                     </p>
                 </div>
@@ -258,7 +288,9 @@ function AdjustStockModal({
                 <Field label="Tipe" error={(errors as any).type}>
                     <select
                         value={data.type}
-                        onChange={(event) => setData('type', event.target.value as MovementType)}
+                        onChange={(event) =>
+                            setData('type', event.target.value as MovementType)
+                        }
                         disabled={processing}
                         style={inputStyle(!!errors.type)}
                     >
@@ -269,12 +301,17 @@ function AdjustStockModal({
                 </Field>
 
                 {data.type === 'adjustment' ? (
-                    <Field label="Stok Akhir" error={(errors as any).final_stock}>
+                    <Field
+                        label="Stok Akhir"
+                        error={(errors as any).final_stock}
+                    >
                         <input
                             type="number"
                             min="0"
                             value={data.final_stock}
-                            onChange={(event) => setData('final_stock', event.target.value)}
+                            onChange={(event) =>
+                                setData('final_stock', event.target.value)
+                            }
                             disabled={processing}
                             style={inputStyle(!!errors.final_stock)}
                         />
@@ -285,7 +322,9 @@ function AdjustStockModal({
                             type="number"
                             min="1"
                             value={data.quantity}
-                            onChange={(event) => setData('quantity', event.target.value)}
+                            onChange={(event) =>
+                                setData('quantity', event.target.value)
+                            }
                             disabled={processing}
                             style={inputStyle(!!errors.quantity)}
                         />
@@ -295,14 +334,27 @@ function AdjustStockModal({
                 <Field label="Catatan" error={(errors as any).note}>
                     <textarea
                         value={data.note}
-                        onChange={(event) => setData('note', event.target.value)}
+                        onChange={(event) =>
+                            setData('note', event.target.value)
+                        }
                         disabled={processing}
                         placeholder="Contoh: restock supplier, retur barang, koreksi opname"
-                        style={{ ...inputStyle(!!errors.note), minHeight: '78px', resize: 'vertical' }}
+                        style={{
+                            ...inputStyle(!!errors.note),
+                            minHeight: '78px',
+                            resize: 'vertical',
+                        }}
                     />
                 </Field>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        gap: '8px',
+                        marginTop: '4px',
+                    }}
+                >
                     <button
                         onClick={onClose}
                         disabled={processing}
@@ -362,10 +414,23 @@ function StatCard({
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ color: 'hsl(214 100% 50%)' }}>{icon}</div>
                 <div>
-                    <p style={{ margin: '0 0 3px 0', color: 'var(--muted-foreground)', fontSize: '12px' }}>
+                    <p
+                        style={{
+                            margin: '0 0 3px 0',
+                            color: 'var(--muted-foreground)',
+                            fontSize: '12px',
+                        }}
+                    >
                         {label}
                     </p>
-                    <p style={{ margin: 0, color: 'var(--card-foreground)', fontSize: '22px', fontWeight: 700 }}>
+                    <p
+                        style={{
+                            margin: 0,
+                            color: 'var(--card-foreground)',
+                            fontSize: '22px',
+                            fontWeight: 700,
+                        }}
+                    >
                         {value.toLocaleString('id-ID')}
                     </p>
                 </div>
@@ -382,7 +447,9 @@ export default function ProductStocksIndex({
     canAdjust,
 }: Props) {
     const [search, setSearch] = useState('');
-    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(
+        null,
+    );
 
     const filteredProducts = useMemo(() => {
         const keyword = search.trim().toLowerCase();
@@ -404,23 +471,72 @@ export default function ProductStocksIndex({
         <>
             <Head title="Manajemen Stok" />
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+            <div
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '24px',
+                }}
+            >
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '16px',
+                    }}
+                >
                     <div>
-                        <h1 style={{ margin: '0 0 6px 0', color: 'var(--foreground)', fontSize: '28px' }}>
+                        <h1
+                            style={{
+                                margin: '0 0 6px 0',
+                                color: 'var(--foreground)',
+                                fontSize: '28px',
+                            }}
+                        >
                             Manajemen Stok
                         </h1>
-                        <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: '14px' }}>
-                            Kontrol stok masuk, stok keluar, dan koreksi opname produk
+                        <p
+                            style={{
+                                margin: 0,
+                                color: 'var(--muted-foreground)',
+                                fontSize: '14px',
+                            }}
+                        >
+                            Kontrol stok masuk, stok keluar, dan koreksi opname
+                            produk
                         </p>
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
-                    <StatCard icon={<Package size={20} />} label="Total Produk" value={stats.totalProducts} />
-                    <StatCard icon={<Boxes size={20} />} label="Total Unit" value={stats.totalStockUnits} />
-                    <StatCard icon={<AlertCircle size={20} />} label="Stok Rendah" value={stats.lowStockProducts} />
-                    <StatCard icon={<Warehouse size={20} />} label="Stok Habis" value={stats.outOfStockProducts} />
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                            'repeat(auto-fit, minmax(160px, 1fr))',
+                        gap: '12px',
+                    }}
+                >
+                    <StatCard
+                        icon={<Package size={20} />}
+                        label="Total Produk"
+                        value={stats.totalProducts}
+                    />
+                    <StatCard
+                        icon={<Boxes size={20} />}
+                        label="Total Unit"
+                        value={stats.totalStockUnits}
+                    />
+                    <StatCard
+                        icon={<AlertCircle size={20} />}
+                        label="Stok Rendah"
+                        value={stats.lowStockProducts}
+                    />
+                    <StatCard
+                        icon={<Warehouse size={20} />}
+                        label="Stok Habis"
+                        value={stats.outOfStockProducts}
+                    />
                 </div>
 
                 <div
@@ -459,35 +575,69 @@ export default function ProductStocksIndex({
                         backgroundColor: 'var(--card)',
                     }}
                 >
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <table
+                        style={{
+                            width: '100%',
+                            borderCollapse: 'collapse',
+                            fontSize: '13px',
+                        }}
+                    >
                         <thead>
-                            <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                {['Produk', 'SKU', 'Kategori', 'Stok', 'Minimum', 'Status', 'Riwayat', 'Aksi'].map(
-                                    (heading) => (
-                                        <th
-                                            key={heading}
-                                            style={{
-                                                padding: '12px 16px',
-                                                textAlign: heading === 'Aksi' ? 'center' : 'left',
-                                                color: 'var(--muted-foreground)',
-                                                fontSize: '11px',
-                                                fontWeight: 700,
-                                                letterSpacing: '0.04em',
-                                                textTransform: 'uppercase',
-                                            }}
-                                        >
-                                            {heading}
-                                        </th>
-                                    ),
-                                )}
+                            <tr
+                                style={{
+                                    borderBottom: '1px solid var(--border)',
+                                }}
+                            >
+                                {[
+                                    'Produk',
+                                    'SKU',
+                                    'Kategori',
+                                    'Stok',
+                                    'Minimum',
+                                    'Status',
+                                    'Riwayat',
+                                    'Aksi',
+                                ].map((heading) => (
+                                    <th
+                                        key={heading}
+                                        style={{
+                                            padding: '12px 16px',
+                                            textAlign:
+                                                heading === 'Aksi'
+                                                    ? 'center'
+                                                    : 'left',
+                                            color: 'var(--muted-foreground)',
+                                            fontSize: '11px',
+                                            fontWeight: 700,
+                                            letterSpacing: '0.04em',
+                                            textTransform: 'uppercase',
+                                        }}
+                                    >
+                                        {heading}
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody>
                             {filteredProducts.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} style={{ padding: '48px 16px', textAlign: 'center' }}>
-                                        <ClipboardList size={32} color="var(--muted-foreground)" />
-                                        <p style={{ margin: '8px 0 0 0', color: 'var(--muted-foreground)' }}>
+                                    <td
+                                        colSpan={8}
+                                        style={{
+                                            padding: '48px 16px',
+                                            textAlign: 'center',
+                                        }}
+                                    >
+                                        <ClipboardList
+                                            size={32}
+                                            color="var(--muted-foreground)"
+                                        />
+                                        <p
+                                            style={{
+                                                margin: '8px 0 0 0',
+                                                color: 'var(--muted-foreground)',
+                                            }}
+                                        >
                                             Tidak ada produk yang cocok
                                         </p>
                                     </td>
@@ -497,25 +647,70 @@ export default function ProductStocksIndex({
                                     const status = stockStatus(product);
 
                                     return (
-                                        <tr key={product.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                            <td style={{ padding: '13px 16px', color: 'var(--card-foreground)' }}>
-                                                <div style={{ fontWeight: 600 }}>{product.name}</div>
-                                                <div style={{ color: 'var(--muted-foreground)', fontSize: '12px' }}>
-                                                    {product.is_active ? 'Aktif' : 'Nonaktif'}
+                                        <tr
+                                            key={product.id}
+                                            style={{
+                                                borderBottom:
+                                                    '1px solid var(--border)',
+                                            }}
+                                        >
+                                            <td
+                                                style={{
+                                                    padding: '13px 16px',
+                                                    color: 'var(--card-foreground)',
+                                                }}
+                                            >
+                                                <div
+                                                    style={{ fontWeight: 600 }}
+                                                >
+                                                    {product.name}
+                                                </div>
+                                                <div
+                                                    style={{
+                                                        color: 'var(--muted-foreground)',
+                                                        fontSize: '12px',
+                                                    }}
+                                                >
+                                                    {product.is_active
+                                                        ? 'Aktif'
+                                                        : 'Nonaktif'}
                                                 </div>
                                             </td>
-                                            <td style={{ padding: '13px 16px', fontFamily: 'monospace' }}>
+                                            <td
+                                                style={{
+                                                    padding: '13px 16px',
+                                                    fontFamily: 'monospace',
+                                                }}
+                                            >
                                                 {product.sku}
                                             </td>
-                                            <td style={{ padding: '13px 16px' }}>{product.category?.name ?? '-'}</td>
-                                            <td style={{ padding: '13px 16px', fontWeight: 700 }}>
-                                                {product.stock.toLocaleString('id-ID')}
+                                            <td
+                                                style={{ padding: '13px 16px' }}
+                                            >
+                                                {product.category?.name ?? '-'}
                                             </td>
-                                            <td style={{ padding: '13px 16px' }}>{product.min_stock}</td>
-                                            <td style={{ padding: '13px 16px' }}>
+                                            <td
+                                                style={{
+                                                    padding: '13px 16px',
+                                                    fontWeight: 700,
+                                                }}
+                                            >
+                                                {product.stock.toLocaleString(
+                                                    'id-ID',
+                                                )}
+                                            </td>
+                                            <td
+                                                style={{ padding: '13px 16px' }}
+                                            >
+                                                {product.min_stock}
+                                            </td>
+                                            <td
+                                                style={{ padding: '13px 16px' }}
+                                            >
                                                 <span
                                                     style={{
-                                                        backgroundColor: status.bg,
+                                                        backgroundColor:
+                                                            status.bg,
                                                         borderRadius: '999px',
                                                         color: status.color,
                                                         display: 'inline-flex',
@@ -527,9 +722,14 @@ export default function ProductStocksIndex({
                                                     {status.label}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '13px 16px' }}>
+                                            <td
+                                                style={{ padding: '13px 16px' }}
+                                            >
                                                 <Link
-                                                    href={buildUrl(`/product-stocks/${product.id}/history`, teamSlug)}
+                                                    href={buildUrl(
+                                                        `/product-stocks/${product.id}/history`,
+                                                        teamSlug,
+                                                    )}
                                                     style={{
                                                         alignItems: 'center',
                                                         color: 'hsl(214 100% 50%)',
@@ -539,28 +739,44 @@ export default function ProductStocksIndex({
                                                     }}
                                                 >
                                                     <History size={14} />
-                                                    {product.stock_movements_count}
+                                                    {
+                                                        product.stock_movements_count
+                                                    }
                                                 </Link>
                                             </td>
-                                            <td style={{ padding: '13px 16px', textAlign: 'center' }}>
+                                            <td
+                                                style={{
+                                                    padding: '13px 16px',
+                                                    textAlign: 'center',
+                                                }}
+                                            >
                                                 {canAdjust && (
                                                     <button
-                                                        onClick={() => setSelectedProduct(product)}
+                                                        onClick={() =>
+                                                            setSelectedProduct(
+                                                                product,
+                                                            )
+                                                        }
                                                         style={{
-                                                            alignItems: 'center',
-                                                            backgroundColor: 'hsl(214 100% 50%)',
+                                                            alignItems:
+                                                                'center',
+                                                            backgroundColor:
+                                                                'hsl(214 100% 50%)',
                                                             border: 'none',
                                                             borderRadius: '8px',
                                                             color: 'white',
                                                             cursor: 'pointer',
-                                                            display: 'inline-flex',
+                                                            display:
+                                                                'inline-flex',
                                                             gap: '6px',
                                                             fontSize: '12px',
                                                             fontWeight: 600,
                                                             padding: '7px 10px',
                                                         }}
                                                     >
-                                                        <SlidersHorizontal size={14} />
+                                                        <SlidersHorizontal
+                                                            size={14}
+                                                        />
                                                         Adjust
                                                     </button>
                                                 )}
@@ -574,17 +790,33 @@ export default function ProductStocksIndex({
                 </div>
 
                 {products.last_page > 1 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                    <div
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            fontSize: '13px',
+                        }}
+                    >
                         <span style={{ color: 'var(--muted-foreground)' }}>
-                            Menampilkan {products.data.length} dari {products.total} produk
+                            Menampilkan {products.data.length} dari{' '}
+                            {products.total} produk
                         </span>
                         <div style={{ display: 'flex', gap: '8px' }}>
                             {products.current_page > 1 && (
                                 <button
                                     onClick={() =>
-                                        router.get(buildUrl(`/product-stocks?page=${products.current_page - 1}`, teamSlug))
+                                        router.get(
+                                            buildUrl(
+                                                `/product-stocks?page=${products.current_page - 1}`,
+                                                teamSlug,
+                                            ),
+                                        )
                                     }
-                                    style={{ ...inputStyle(), width: 'auto', cursor: 'pointer' }}
+                                    style={{
+                                        ...inputStyle(),
+                                        width: 'auto',
+                                        cursor: 'pointer',
+                                    }}
                                 >
                                     Sebelumnya
                                 </button>
@@ -592,9 +824,18 @@ export default function ProductStocksIndex({
                             {products.current_page < products.last_page && (
                                 <button
                                     onClick={() =>
-                                        router.get(buildUrl(`/product-stocks?page=${products.current_page + 1}`, teamSlug))
+                                        router.get(
+                                            buildUrl(
+                                                `/product-stocks?page=${products.current_page + 1}`,
+                                                teamSlug,
+                                            ),
+                                        )
                                     }
-                                    style={{ ...inputStyle(), width: 'auto', cursor: 'pointer' }}
+                                    style={{
+                                        ...inputStyle(),
+                                        width: 'auto',
+                                        cursor: 'pointer',
+                                    }}
                                 >
                                     Selanjutnya
                                 </button>
@@ -611,12 +852,24 @@ export default function ProductStocksIndex({
                         padding: '16px',
                     }}
                 >
-                    <h2 style={{ margin: '0 0 12px 0', color: 'var(--card-foreground)', fontSize: '16px' }}>
+                    <h2
+                        style={{
+                            margin: '0 0 12px 0',
+                            color: 'var(--card-foreground)',
+                            fontSize: '16px',
+                        }}
+                    >
                         Aktivitas Stok Terbaru
                     </h2>
                     <div style={{ display: 'grid', gap: '10px' }}>
                         {recentMovements.length === 0 ? (
-                            <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: '13px' }}>
+                            <p
+                                style={{
+                                    margin: 0,
+                                    color: 'var(--muted-foreground)',
+                                    fontSize: '13px',
+                                }}
+                            >
                                 Belum ada aktivitas stok
                             </p>
                         ) : (
@@ -633,21 +886,51 @@ export default function ProductStocksIndex({
                                     }}
                                 >
                                     <div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                            }}
+                                        >
                                             {movementIcon(movement.type)}
-                                            <strong style={{ color: 'var(--card-foreground)', fontSize: '13px' }}>
+                                            <strong
+                                                style={{
+                                                    color: 'var(--card-foreground)',
+                                                    fontSize: '13px',
+                                                }}
+                                            >
                                                 {movementLabel(movement.type)}
                                             </strong>
-                                            <span style={{ color: 'var(--muted-foreground)', fontSize: '12px' }}>
+                                            <span
+                                                style={{
+                                                    color: 'var(--muted-foreground)',
+                                                    fontSize: '12px',
+                                                }}
+                                            >
                                                 {movement.product.name}
                                             </span>
                                         </div>
-                                        <p style={{ margin: '4px 0 0 22px', color: 'var(--muted-foreground)', fontSize: '12px' }}>
-                                            {movement.stock_before} ke {movement.stock_after}
-                                            {movement.user?.name ? ` oleh ${movement.user.name}` : ''}
+                                        <p
+                                            style={{
+                                                margin: '4px 0 0 22px',
+                                                color: 'var(--muted-foreground)',
+                                                fontSize: '12px',
+                                            }}
+                                        >
+                                            {movement.stock_before} ke{' '}
+                                            {movement.stock_after}
+                                            {movement.user?.name
+                                                ? ` oleh ${movement.user.name}`
+                                                : ''}
                                         </p>
                                     </div>
-                                    <span style={{ color: 'var(--muted-foreground)', fontSize: '12px' }}>
+                                    <span
+                                        style={{
+                                            color: 'var(--muted-foreground)',
+                                            fontSize: '12px',
+                                        }}
+                                    >
                                         {formatDate(movement.created_at)}
                                     </span>
                                 </div>

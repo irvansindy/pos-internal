@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\ProductActivity\RecordProductActivityLogAction;
 use App\Actions\Product\CreateProductAction;
 use App\Actions\Product\DeleteProductAction;
 use App\Actions\Product\UpdateProductAction;
+use App\Actions\ProductActivity\RecordProductActivityLogAction;
 use App\Http\Requests\Product\CreateProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
 use App\Models\Product;
 use App\Models\ProductActivityLog;
-use App\Models\ProductCategory;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;

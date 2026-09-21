@@ -1,7 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { BookOpen, Folder, LayoutGrid, Menu, Search } from 'lucide-react';
 import { useState } from 'react';
-import AppLogo from '@/components/app-logo';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { TeamSwitcher } from '@/components/team-switcher';
 import ThemeToggle from '@/components/theme-toggle';
@@ -120,9 +119,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                         href={dashboardUrl}
                         prefetch
                         className="flex min-w-0 items-center space-x-2"
-                    >
-                        {/* <AppLogo /> */}
-                    </Link>
+                    ></Link>
 
                     {/* Desktop Navigation */}
                     <div className="ml-6 hidden h-full items-center space-x-6 lg:flex">

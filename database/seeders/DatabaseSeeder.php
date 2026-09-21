@@ -2,14 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Enums\TeamRole;
-use App\Models\Menu;
 use App\Models\Team;
-use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
 {

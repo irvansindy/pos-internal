@@ -10,7 +10,13 @@ interface Props {
     onSelectProduct: (product: PosItem) => void;
 }
 
-export function ProductGrid({ search, onSearchChange, products, loading, onSelectProduct }: Props) {
+export function ProductGrid({
+    search,
+    onSearchChange,
+    products,
+    loading,
+    onSelectProduct,
+}: Props) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* Search bar */}
@@ -64,7 +70,12 @@ export function ProductGrid({ search, onSearchChange, products, loading, onSelec
                     }}
                 >
                     <strong style={{ fontSize: '14px' }}>Item Tersedia</strong>
-                    <span style={{ color: 'var(--muted-foreground)', fontSize: '12px' }}>
+                    <span
+                        style={{
+                            color: 'var(--muted-foreground)',
+                            fontSize: '12px',
+                        }}
+                    >
                         {loading ? 'Memuat...' : `${products.length} item`}
                     </span>
                 </div>
@@ -72,7 +83,8 @@ export function ProductGrid({ search, onSearchChange, products, loading, onSelec
                 <div
                     style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                        gridTemplateColumns:
+                            'repeat(auto-fill, minmax(180px, 1fr))',
                         gap: '12px',
                         padding: '16px',
                     }}
@@ -87,7 +99,9 @@ export function ProductGrid({ search, onSearchChange, products, loading, onSelec
                                 fontSize: '13px',
                             }}
                         >
-                            {loading ? 'Memuat produk...' : 'Item tidak ditemukan.'}
+                            {loading
+                                ? 'Memuat produk...'
+                                : 'Item tidak ditemukan.'}
                         </div>
                     ) : (
                         products.map((product) => (
@@ -104,7 +118,13 @@ export function ProductGrid({ search, onSearchChange, products, loading, onSelec
     );
 }
 
-function ProductCard({ product, onSelect }: { product: PosItem; onSelect: (p: PosItem) => void }) {
+function ProductCard({
+    product,
+    onSelect,
+}: {
+    product: PosItem;
+    onSelect: (p: PosItem) => void;
+}) {
     const isLowStock = product.stock <= product.min_stock;
 
     return (
@@ -114,7 +134,8 @@ function ProductCard({ product, onSelect }: { product: PosItem; onSelect: (p: Po
             style={{
                 textAlign: 'left',
                 border: '1px solid var(--border)',
-                backgroundColor: product.stock === 0 ? 'var(--muted)' : 'var(--background)',
+                backgroundColor:
+                    product.stock === 0 ? 'var(--muted)' : 'var(--background)',
                 borderRadius: '8px',
                 padding: '12px',
                 cursor: product.stock === 0 ? 'not-allowed' : 'pointer',
@@ -126,23 +147,59 @@ function ProductCard({ product, onSelect }: { product: PosItem; onSelect: (p: Po
             }}
         >
             <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '4px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                    <PosBadge color="blue">{itemTypeLabel(product.item_type)}</PosBadge>
+                <div
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: '4px',
+                        marginBottom: '8px',
+                        flexWrap: 'wrap',
+                    }}
+                >
+                    <PosBadge color="blue">
+                        {itemTypeLabel(product.item_type)}
+                    </PosBadge>
                     <PosBadge>{product.sku}</PosBadge>
-                    <PosBadge color={product.stock === 0 ? 'red' : isLowStock ? 'amber' : 'green'}>
+                    <PosBadge
+                        color={
+                            product.stock === 0
+                                ? 'red'
+                                : isLowStock
+                                  ? 'amber'
+                                  : 'green'
+                        }
+                    >
                         {product.stock === 0 ? 'Habis' : product.stock}
                     </PosBadge>
                 </div>
 
-                <div style={{ color: 'var(--foreground)', fontSize: '14px', fontWeight: 700 }}>
+                <div
+                    style={{
+                        color: 'var(--foreground)',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                    }}
+                >
                     {product.name}
                 </div>
-                <div style={{ color: 'var(--muted-foreground)', fontSize: '12px', marginTop: '4px' }}>
+                <div
+                    style={{
+                        color: 'var(--muted-foreground)',
+                        fontSize: '12px',
+                        marginTop: '4px',
+                    }}
+                >
                     {product.category?.name ?? 'Tanpa kategori'}
                 </div>
             </div>
 
-            <div style={{ color: 'var(--foreground)', fontWeight: 800, marginTop: '12px' }}>
+            <div
+                style={{
+                    color: 'var(--foreground)',
+                    fontWeight: 800,
+                    marginTop: '12px',
+                }}
+            >
                 {formatCurrency(product.price)}
             </div>
         </button>

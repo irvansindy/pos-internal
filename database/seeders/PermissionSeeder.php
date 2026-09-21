@@ -57,7 +57,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'transaction.view',   'label' => 'Lihat Transaksi',  'description' => 'Melihat daftar transaksi'],
             ['name' => 'transaction.create', 'label' => 'Buat Transaksi',   'description' => 'Membuat transaksi baru (kasir)'],
             ['name' => 'transaction.update', 'label' => 'Edit Transaksi',   'description' => 'Mengubah transaksi'],
-            ['name' => 'transaction.delete', 'label' => 'Hapus Transaksi',  'description' => 'Menghapus transaksi'],
+            ['name' => 'transaction.delete', 'label' => 'Batalkan Transaksi', 'description' => 'Membatalkan transaksi dari manajemen transaksi'],
             ['name' => 'transaction.void',   'label' => 'Void Transaksi',   'description' => 'Membatalkan transaksi'],
             ['name' => 'transaction.refund', 'label' => 'Refund Transaksi', 'description' => 'Melakukan refund transaksi'],
             ['name' => 'transaction.return', 'label' => 'Return Transaksi', 'description' => 'Melakukan return barang'],
@@ -68,7 +68,33 @@ class PermissionSeeder extends Seeder
             ['name' => 'voucher.apply',      'label' => 'Apply Voucher',    'description' => 'Menggunakan voucher di transaksi'],
         ],
 
+        'cashier-shift' => [
+            ['name' => 'cashier-shift.view',     'label' => 'Lihat Operasional Kasir', 'description' => 'Melihat shift dan rekonsiliasi kas sendiri'],
+            ['name' => 'cashier-shift.open',     'label' => 'Buka Shift Kasir',         'description' => 'Membuka shift dengan modal awal'],
+            ['name' => 'cashier-shift.manage',   'label' => 'Catat Pergerakan Kas',     'description' => 'Mencatat kas masuk dan kas keluar selama shift'],
+            ['name' => 'cashier-shift.close',    'label' => 'Tutup Shift Kasir',        'description' => 'Menutup shift dan merekonsiliasi uang fisik'],
+            ['name' => 'cashier-shift.view-all', 'label' => 'Lihat Semua Shift',        'description' => 'Melihat riwayat shift semua kasir dalam toko'],
+        ],
+
         // ── REPORT MODULE ────────────────────────────────────
+        'customer' => [
+            ['name' => 'customer.view',   'label' => 'Lihat Pelanggan', 'description' => 'Melihat pelanggan dan riwayat loyalti'],
+            ['name' => 'customer.create', 'label' => 'Buat Pelanggan',  'description' => 'Menambahkan pelanggan baru'],
+            ['name' => 'customer.update', 'label' => 'Edit Pelanggan',  'description' => 'Mengubah data pelanggan'],
+        ],
+
+        'dining-table' => [
+            ['name' => 'dining-table.view',   'label' => 'Lihat Meja', 'description' => 'Melihat meja dan status pesanan'],
+            ['name' => 'dining-table.create', 'label' => 'Buat Meja',  'description' => 'Menambahkan meja baru'],
+            ['name' => 'dining-table.update', 'label' => 'Edit Meja',  'description' => 'Mengubah data dan status meja'],
+            ['name' => 'dining-table.delete', 'label' => 'Hapus Meja', 'description' => 'Menghapus meja yang tidak terisi'],
+        ],
+
+        'inventory' => [
+            ['name' => 'inventory.view',   'label' => 'Lihat Operasional Stok', 'description' => 'Melihat supplier, purchase order, dan stok opname'],
+            ['name' => 'inventory.manage', 'label' => 'Kelola Operasional Stok', 'description' => 'Mengelola supplier, purchase order, dan stok opname'],
+        ],
+
         'report' => [
             ['name' => 'report.sales',   'label' => 'Laporan Penjualan', 'description' => 'Melihat laporan penjualan'],
             ['name' => 'report.stock',   'label' => 'Laporan Stok',      'description' => 'Melihat laporan stok'],
@@ -95,14 +121,14 @@ class PermissionSeeder extends Seeder
                 Permission::firstOrCreate(
                     ['name' => $permission['name'], 'guard_name' => 'web'],
                     [
-                        'label'       => $permission['label'],
+                        'label' => $permission['label'],
                         'description' => $permission['description'],
-                        'module'      => $module,
+                        'module' => $module,
                     ]
                 );
             }
         }
 
-        $this->command->info('✅ Permissions seeded: ' . Permission::count() . ' total');
+        $this->command->info('✅ Permissions seeded: '.Permission::count().' total');
     }
 }

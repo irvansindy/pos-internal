@@ -20,7 +20,10 @@ import {
     store as storeInvitation,
 } from '@/routes/organizations/invitations';
 import { destroy as destroyMember } from '@/routes/organizations/members';
-import type { OrganizationMember, OrganizationPendingInvitation } from '@/types';
+import type {
+    OrganizationMember,
+    OrganizationPendingInvitation,
+} from '@/types';
 
 type Props = {
     organization: { name: string };
@@ -37,7 +40,8 @@ export default function OrganizationMembers({
     members,
     pendingInvitations,
 }: Props) {
-    const quotaFull = quota.maxOwners !== null && quota.memberCount >= quota.maxOwners;
+    const quotaFull =
+        quota.maxOwners !== null && quota.memberCount >= quota.maxOwners;
 
     return (
         <>
@@ -108,9 +112,7 @@ export default function OrganizationMembers({
                                     </Select>
 
                                     <Form
-                                        {...destroyMember.form(
-                                            member.userId,
-                                        )}
+                                        {...destroyMember.form(member.userId)}
                                     >
                                         {({ processing }) => (
                                             <Button
@@ -159,7 +161,7 @@ export default function OrganizationMembers({
                                     <div className="flex items-center gap-2">
                                         <Form
                                             {...resendInvitation.form(
-                                                invitation.id,
+                                                invitation.code,
                                             )}
                                         >
                                             {({ processing }) => (
@@ -177,7 +179,7 @@ export default function OrganizationMembers({
 
                                         <Form
                                             {...destroyInvitation.form(
-                                                invitation.id,
+                                                invitation.code,
                                             )}
                                         >
                                             {({ processing }) => (

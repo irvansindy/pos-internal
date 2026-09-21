@@ -76,10 +76,8 @@ HTTP manapun. Command di atas pakai `forceFill()`.
   di backend (`price_monthly` vs `price_yearly`), tapi tombol "Pilih
   Paket" di halaman Toko Saya saat ini hardcode `monthly`. Tinggal
   tambah toggle di UI dan kirim `billing_period` sesuai pilihan.
-- **Downgrade / cancel subscription** dari sisi user belum ada UI-nya
-  (`UpgradePlanAction` dari Sprint 2 masih ada di backend untuk
-  keperluan admin/instant-switch tanpa pembayaran, tapi tidak lagi
-  dipakai tombol "Pilih Paket" di UI — itu sekarang lewat checkout).
+- `UpgradePlanAction` masih tersedia sebagai aturan domain internal. Tidak ada
+  route pengguna yang dapat menjalankan pergantian paket tanpa checkout.
 - **Retry/renewal otomatis.** Belum ada job terjadwal untuk subscription
   yang `current_period_end`-nya lewat (harusnya jadi `past_due` lalu
   `suspended` kalau tidak diperpanjang). Ini penting sebelum production.

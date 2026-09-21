@@ -1,6 +1,14 @@
 import { Banknote, Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
-import type { AppliedVoucher, AvailableVoucher, CartItem, PaymentMethod, PosItem } from '@/types/pos';
+import type {
+    AppliedVoucher,
+    AvailableVoucher,
+    CartItem,
+    PaymentMethod,
+    PosCustomer,
+    PosDiningTable,
+    PosItem,
+} from '@/types/pos';
 import {
     formatNumberInput,
     formatCurrency,
@@ -24,10 +32,18 @@ interface Props {
     voucherMessage: string | null;
     voucherChecking: boolean;
     availablePromotions: (PosItem & { suggested_quantity: number })[];
-    onApplyPromotion: (promotion: PosItem & { suggested_quantity: number }) => void;
+    onApplyPromotion: (
+        promotion: PosItem & { suggested_quantity: number },
+    ) => void;
 
     // Form state
     customerName: string;
+    customers: PosCustomer[];
+    customerId: string;
+    diningTables: PosDiningTable[];
+    diningTableId: string;
+    pointsToRedeem: string;
+    loyaltyPointValue: number;
     voucherCode: string;
     paymentMethod: string;
     paidAmount: string;
@@ -40,6 +56,10 @@ interface Props {
     onRemoveItem: (product: PosItem) => void;
     onClearCart: () => void;
     onSetCustomerName: (v: string) => void;
+    onSetCustomerId: (v: string) => void;
+    onCreateCustomer: () => void;
+    onSetDiningTableId: (v: string) => void;
+    onSetPointsToRedeem: (v: string) => void;
     onSetVoucherCode: (v: string) => void;
     onSetPaymentMethod: (v: string) => void;
     onSetPaidAmount: (v: string) => void;
@@ -61,6 +81,12 @@ export function CartPanel({
     availablePromotions,
     onApplyPromotion,
     customerName,
+    customers,
+    customerId,
+    diningTables,
+    diningTableId,
+    pointsToRedeem,
+    loyaltyPointValue,
     voucherCode,
     paymentMethod,
     paidAmount,
@@ -71,6 +97,10 @@ export function CartPanel({
     onRemoveItem,
     onClearCart,
     onSetCustomerName,
+    onSetCustomerId,
+    onCreateCustomer,
+    onSetDiningTableId,
+    onSetPointsToRedeem,
     onSetVoucherCode,
     onSetPaymentMethod,
     onSetPaidAmount,
@@ -79,7 +109,19 @@ export function CartPanel({
     onSubmit,
 }: Props) {
     const paid = parseNumberInput(paidAmount);
-    const discountTotal = appliedVoucher?.discount_total ?? 0;
+    const voucherDiscount = appliedVoucher?.discount_total ?? 0;
+    const selectedCustomer = customers.find(
+        (customer) => String(customer.id) === customerId,
+    );
+    const redeemedPoints = Math.min(
+        Math.max(Number(pointsToRedeem) || 0, 0),
+        selectedCustomer?.points_balance ?? 0,
+    );
+    const pointsDiscount = Math.min(
+        redeemedPoints * loyaltyPointValue,
+        Math.max(subtotal - voucherDiscount, 0),
+    );
+    const discountTotal = voucherDiscount + pointsDiscount;
     const appliedPromotionIds = new Set(
         cart
             .filter((item) => item.product.item_type === 'promotion')
@@ -94,7 +136,11 @@ export function CartPanel({
     const changeAmount = Math.max(paid - grandTotal, 0);
     const remainingAmount = Math.max(grandTotal - paid, 0);
     const paymentOptions = useMemo<SearchableSelectOption[]>(
-        () => paymentMethods.map((method) => ({ value: method.value, label: method.label })),
+        () =>
+            paymentMethods.map((method) => ({
+                value: method.value,
+                label: method.label,
+            })),
         [paymentMethods],
     );
     const voucherOptions = useMemo<SearchableSelectOption[]>(
@@ -130,7 +176,13 @@ export function CartPanel({
                     alignItems: 'center',
                 }}
             >
-                <strong style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                <strong
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                    }}
+                >
                     <ShoppingCart size={16} />
                     Keranjang
                 </strong>
@@ -152,8 +204,14 @@ export function CartPanel({
                 )}
             </div>
 
-            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-
+            <div
+                style={{
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '14px',
+                }}
+            >
                 {/* Cart items */}
                 {cart.length === 0 ? (
                     <div
@@ -178,7 +236,48 @@ export function CartPanel({
                 )}
 
                 {/* Checkout form */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                    }}
+                >
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr auto',
+                            gap: '6px',
+                        }}
+                    >
+                        <SearchableSelect
+                            value={customerId}
+                            options={[
+                                { value: '', label: 'Pelanggan umum' },
+                                ...customers.map((customer) => ({
+                                    value: String(customer.id),
+                                    label: `${customer.name} · ${customer.phone}`,
+                                    description: `${customer.points_balance} poin`,
+                                })),
+                            ]}
+                            placeholder="Cari nama / nomor pelanggan"
+                            searchPlaceholder="Cari pelanggan..."
+                            emptyText="Pelanggan tidak ditemukan."
+                            onChange={onSetCustomerId}
+                        />
+                        <button
+                            type="button"
+                            onClick={onCreateCustomer}
+                            style={{
+                                ...inputStyle,
+                                width: '40px',
+                                cursor: 'pointer',
+                                fontWeight: 800,
+                            }}
+                        >
+                            +
+                        </button>
+                    </div>
                     <input
                         value={customerName}
                         onChange={(e) => onSetCustomerName(e.target.value)}
@@ -186,71 +285,159 @@ export function CartPanel({
                         style={inputStyle}
                     />
 
-                    {canApplyVoucher && (
-                        <div style={{ display: 'grid', gap: '6px' }}>
-                            <SearchableSelect
-                                value={voucherCode}
-                                options={voucherOptions}
-                                placeholder="Kode voucher (opsional)"
-                                searchPlaceholder="Cari kode atau nama voucher..."
-                                emptyText="Voucher tidak ditemukan."
-                                onChange={onSetVoucherCode}
+                    {selectedCustomer &&
+                        selectedCustomer.points_balance > 0 && (
+                            <input
+                                type="number"
+                                min={0}
+                                max={selectedCustomer.points_balance}
+                                value={pointsToRedeem}
+                                onChange={(e) =>
+                                    onSetPointsToRedeem(e.target.value)
+                                }
+                                placeholder="Poin yang ditukar"
+                                style={inputStyle}
                             />
+                        )}
 
-                            {voucherChecking && (
-                                <div style={{ color: 'var(--muted-foreground)', fontSize: '12px' }}>
-                                    Mengecek voucher...
-                                </div>
-                            )}
+                    <select
+                        value={diningTableId}
+                        onChange={(e) => onSetDiningTableId(e.target.value)}
+                        style={inputStyle}
+                    >
+                        <option value="">Tanpa meja</option>
+                        {diningTables
+                            .filter(
+                                (table) =>
+                                    table.status !== 'occupied' ||
+                                    String(table.id) === diningTableId,
+                            )
+                            .map((table) => (
+                                <option key={table.id} value={table.id}>
+                                    {table.name} · {table.capacity} kursi (
+                                    {table.status})
+                                </option>
+                            ))}
+                    </select>
 
-                            {!voucherChecking && appliedVoucher && (
-                                <div style={{ color: 'hsl(142 70% 32%)', fontSize: '12px', fontWeight: 700 }}>
-                                    Voucher {appliedVoucher.code}: -{formatCurrency(appliedVoucher.discount_total)}
-                                </div>
-                            )}
+                    {canApplyVoucher && (
+                        <>
+                            <div style={{ display: 'grid', gap: '6px' }}>
+                                <SearchableSelect
+                                    value={voucherCode}
+                                    options={voucherOptions}
+                                    placeholder="Kode voucher (opsional)"
+                                    searchPlaceholder="Cari kode atau nama voucher..."
+                                    emptyText="Voucher tidak ditemukan."
+                                    onChange={onSetVoucherCode}
+                                />
 
-                            {!voucherChecking && voucherMessage && !appliedVoucher && (
-                                <div style={{ color: 'hsl(0 72% 40%)', fontSize: '12px' }}>
-                                    {voucherMessage}
-                                </div>
-                            )}
-                        </div>
-
-                        {suggestedPromotions.length > 0 && (
-                            <div style={{ display: 'grid', gap: '6px', border: '1px dashed hsl(142 70% 36%)', borderRadius: '8px', padding: '10px' }}>
-                                <div style={{ fontSize: '12px', fontWeight: 700, color: 'hsl(142 70% 32%)' }}>
-                                    🎉 Promo Tersedia
-                                </div>
-                                {suggestedPromotions.map((promotion) => (
+                                {voucherChecking && (
                                     <div
-                                        key={promotion.item_id}
-                                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}
+                                        style={{
+                                            color: 'var(--muted-foreground)',
+                                            fontSize: '12px',
+                                        }}
                                     >
-                                        <span style={{ fontSize: '12px', color: 'var(--foreground)' }}>
-                                            {promotion.name}
-                                            {promotion.suggested_quantity > 1 ? ` ×${promotion.suggested_quantity}` : ''}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => onApplyPromotion(promotion)}
+                                        Mengecek voucher...
+                                    </div>
+                                )}
+
+                                {!voucherChecking && appliedVoucher && (
+                                    <div
+                                        style={{
+                                            color: 'hsl(142 70% 32%)',
+                                            fontSize: '12px',
+                                            fontWeight: 700,
+                                        }}
+                                    >
+                                        Voucher {appliedVoucher.code}: -
+                                        {formatCurrency(
+                                            appliedVoucher.discount_total,
+                                        )}
+                                    </div>
+                                )}
+
+                                {!voucherChecking &&
+                                    voucherMessage &&
+                                    !appliedVoucher && (
+                                        <div
                                             style={{
-                                                fontSize: '11px',
-                                                fontWeight: 700,
-                                                padding: '4px 10px',
-                                                borderRadius: '999px',
-                                                border: 'none',
-                                                backgroundColor: 'hsl(142 70% 36%)',
-                                                color: 'white',
-                                                cursor: 'pointer',
-                                                whiteSpace: 'nowrap',
+                                                color: 'hsl(0 72% 40%)',
+                                                fontSize: '12px',
                                             }}
                                         >
-                                            Terapkan
-                                        </button>
-                                    </div>
-                                ))}
+                                            {voucherMessage}
+                                        </div>
+                                    )}
                             </div>
-                        )}
+
+                            {suggestedPromotions.length > 0 && (
+                                <div
+                                    style={{
+                                        display: 'grid',
+                                        gap: '6px',
+                                        border: '1px dashed hsl(142 70% 36%)',
+                                        borderRadius: '8px',
+                                        padding: '10px',
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            fontSize: '12px',
+                                            fontWeight: 700,
+                                            color: 'hsl(142 70% 32%)',
+                                        }}
+                                    >
+                                        🎉 Promo Tersedia
+                                    </div>
+                                    {suggestedPromotions.map((promotion) => (
+                                        <div
+                                            key={promotion.item_id}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                gap: '8px',
+                                            }}
+                                        >
+                                            <span
+                                                style={{
+                                                    fontSize: '12px',
+                                                    color: 'var(--foreground)',
+                                                }}
+                                            >
+                                                {promotion.name}
+                                                {promotion.suggested_quantity >
+                                                1
+                                                    ? ` ×${promotion.suggested_quantity}`
+                                                    : ''}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    onApplyPromotion(promotion)
+                                                }
+                                                style={{
+                                                    fontSize: '11px',
+                                                    fontWeight: 700,
+                                                    padding: '4px 10px',
+                                                    borderRadius: '999px',
+                                                    border: 'none',
+                                                    backgroundColor:
+                                                        'hsl(142 70% 36%)',
+                                                    color: 'white',
+                                                    cursor: 'pointer',
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                Terapkan
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>
                     )}
 
                     <SearchableSelect
@@ -277,7 +464,12 @@ export function CartPanel({
                         value={note}
                         onChange={(e) => onSetNote(e.target.value)}
                         placeholder="Catatan (opsional)"
-                        style={{ ...inputStyle, height: '68px', paddingTop: '10px', resize: 'vertical' }}
+                        style={{
+                            ...inputStyle,
+                            height: '68px',
+                            paddingTop: '10px',
+                            resize: 'vertical',
+                        }}
                     />
                 </div>
 
@@ -307,11 +499,20 @@ export function CartPanel({
                         paddingTop: '14px',
                     }}
                 >
-                    <SummaryRow label="Subtotal"  value={formatCurrency(subtotal)} />
-                    {discountTotal > 0 && (
+                    <SummaryRow
+                        label="Subtotal"
+                        value={formatCurrency(subtotal)}
+                    />
+                    {voucherDiscount > 0 && (
                         <SummaryRow
                             label={`Voucher ${appliedVoucher?.code ?? ''}`.trim()}
-                            value={`-${formatCurrency(discountTotal)}`}
+                            value={`-${formatCurrency(voucherDiscount)}`}
+                        />
+                    )}
+                    {pointsDiscount > 0 && (
+                        <SummaryRow
+                            label={`${redeemedPoints} poin`}
+                            value={`-${formatCurrency(pointsDiscount)}`}
                         />
                     )}
                     {taxTotal > 0 && (
@@ -320,8 +521,12 @@ export function CartPanel({
                             value={formatCurrency(taxTotal)}
                         />
                     )}
-                    <SummaryRow label="Total"     value={formatCurrency(grandTotal)} strong />
-                    <SummaryRow label="Bayar"     value={formatCurrency(paid)} />
+                    <SummaryRow
+                        label="Total"
+                        value={formatCurrency(grandTotal)}
+                        strong
+                    />
+                    <SummaryRow label="Bayar" value={formatCurrency(paid)} />
                     {remainingAmount > 0 ? (
                         <SummaryRow
                             label="Sisa Tagihan"
@@ -329,7 +534,11 @@ export function CartPanel({
                             strong
                         />
                     ) : (
-                        <SummaryRow label="Kembalian" value={formatCurrency(changeAmount)} strong />
+                        <SummaryRow
+                            label="Kembalian"
+                            value={formatCurrency(changeAmount)}
+                            strong
+                        />
                     )}
                 </div>
 
@@ -341,9 +550,18 @@ export function CartPanel({
                         height: '44px',
                         borderRadius: '8px',
                         border: 'none',
-                        backgroundColor: processing || cart.length === 0 ? 'var(--muted)' : 'hsl(142 70% 36%)',
-                        color: processing || cart.length === 0 ? 'var(--muted-foreground)' : 'white',
-                        cursor: processing || cart.length === 0 ? 'not-allowed' : 'pointer',
+                        backgroundColor:
+                            processing || cart.length === 0
+                                ? 'var(--muted)'
+                                : 'hsl(142 70% 36%)',
+                        color:
+                            processing || cart.length === 0
+                                ? 'var(--muted-foreground)'
+                                : 'white',
+                        cursor:
+                            processing || cart.length === 0
+                                ? 'not-allowed'
+                                : 'pointer',
                         fontWeight: 800,
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -383,21 +601,44 @@ function CartItemRow({
             }}
         >
             <div>
-                <div style={{ fontWeight: 700, fontSize: '13px' }}>{item.product.name}</div>
-                <div style={{ color: 'var(--muted-foreground)', fontSize: '12px', marginTop: '2px' }}>
+                <div style={{ fontWeight: 700, fontSize: '13px' }}>
+                    {item.product.name}
+                </div>
+                <div
+                    style={{
+                        color: 'var(--muted-foreground)',
+                        fontSize: '12px',
+                        marginTop: '2px',
+                    }}
+                >
                     {formatCurrency(item.product.price)}{' '}
-                    <PosBadge color="blue">{itemTypeLabel(item.product.item_type)}</PosBadge>
+                    <PosBadge color="blue">
+                        {itemTypeLabel(item.product.item_type)}
+                    </PosBadge>
                 </div>
 
                 {/* Qty stepper */}
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
-                    <QtyButton onClick={() => onSetQuantity(item.product, item.quantity - 1)}>
+                <div
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginTop: '10px',
+                    }}
+                >
+                    <QtyButton
+                        onClick={() =>
+                            onSetQuantity(item.product, item.quantity - 1)
+                        }
+                    >
                         <Minus size={14} />
                     </QtyButton>
                     <input
                         type="number"
                         value={item.quantity}
-                        onChange={(e) => onSetQuantity(item.product, Number(e.target.value))}
+                        onChange={(e) =>
+                            onSetQuantity(item.product, Number(e.target.value))
+                        }
                         style={{
                             width: '48px',
                             height: '28px',
@@ -409,7 +650,11 @@ function CartItemRow({
                             fontSize: '13px',
                         }}
                     />
-                    <QtyButton onClick={() => onSetQuantity(item.product, item.quantity + 1)}>
+                    <QtyButton
+                        onClick={() =>
+                            onSetQuantity(item.product, item.quantity + 1)
+                        }
+                    >
                         <Plus size={14} />
                     </QtyButton>
                 </div>
@@ -418,17 +663,31 @@ function CartItemRow({
             <div style={{ textAlign: 'right' }}>
                 <button
                     onClick={() => onRemove(item.product)}
-                    style={{ border: 'none', background: 'none', color: 'hsl(0 72% 50%)', cursor: 'pointer', padding: '2px' }}
+                    style={{
+                        border: 'none',
+                        background: 'none',
+                        color: 'hsl(0 72% 50%)',
+                        cursor: 'pointer',
+                        padding: '2px',
+                    }}
                 >
                     <Trash2 size={15} />
                 </button>
-                <div style={{ marginTop: '24px', fontWeight: 800 }}>{formatCurrency(lineTotal)}</div>
+                <div style={{ marginTop: '24px', fontWeight: 800 }}>
+                    {formatCurrency(lineTotal)}
+                </div>
             </div>
         </div>
     );
 }
 
-function QtyButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+function QtyButton({
+    onClick,
+    children,
+}: {
+    onClick: () => void;
+    children: React.ReactNode;
+}) {
     return (
         <button
             onClick={onClick}
@@ -450,15 +709,20 @@ function QtyButton({ onClick, children }: { onClick: () => void; children: React
 }
 
 function voucherDescription(voucher: AvailableVoucher): string {
-    const discount = voucher.type === 'percent'
-        ? `${Number(voucher.value)}%`
-        : formatCurrency(voucher.value);
+    const discount =
+        voucher.type === 'percent'
+            ? `${Number(voucher.value)}%`
+            : formatCurrency(voucher.value);
     const minPurchase = parseFloat(voucher.min_purchase || '0');
-    const maxDiscount = voucher.max_discount ? parseFloat(voucher.max_discount) : 0;
+    const maxDiscount = voucher.max_discount
+        ? parseFloat(voucher.max_discount)
+        : 0;
 
     return [
         `Diskon ${discount}`,
         minPurchase > 0 ? `min. ${formatCurrency(minPurchase)}` : null,
         maxDiscount > 0 ? `maks. ${formatCurrency(maxDiscount)}` : null,
-    ].filter(Boolean).join(' | ');
+    ]
+        .filter(Boolean)
+        .join(' | ');
 }

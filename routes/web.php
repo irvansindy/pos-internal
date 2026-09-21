@@ -1,28 +1,35 @@
 <?php
 
+use App\Http\Controllers\CashierShiftController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DiningTableController;
+use App\Http\Controllers\InventoryOperationController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\Organizations\OrganizationInvitationController;
 use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductPackageController;
+use App\Http\Controllers\ProductPromotionController;
 use App\Http\Controllers\ProductStockController;
-use App\Http\Controllers\PosController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\Teams\TeamInvitationController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\TransactionReceiptController;
 use App\Http\Controllers\TransactionRefundController;
 use App\Http\Controllers\TransactionReturnController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VoucherController;
 use App\Http\Middleware\EnsureTeamMembership;
 use App\Http\Middleware\EnsureTeamPermission;
+use App\Models\Team;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
-use App\Http\Controllers\ProductPackageController;
-use App\Http\Controllers\ProductPromotionController;
+
 // ── PUBLIC ───────────────────────────────────────────────
 Route::inertia('/', 'welcome', [
     'canRegister' => Features::enabled(Features::registration()),
@@ -40,13 +47,14 @@ Route::middleware(['auth'])->group(function () {
         [OrganizationInvitationController::class, 'accept']
     )->name('organization-invitations.accept');
 
-    Route::post('/current-team/switch/{team:slug}', function (\App\Models\Team $team) {
+    Route::post('/current-team/switch/{team:slug}', function (Team $team) {
         $user = request()->user();
         if ($user->switchTeam($team)) {
             return redirect()
                 ->route('dashboard', ['current_team' => $team->slug])
                 ->with('success', "Beralih ke tim: {$team->name}");
         }
+
         return back()->with('error', 'Tidak dapat beralih ke tim tersebut.');
     })->name('current-team.switch');
 });
@@ -169,19 +177,19 @@ Route::prefix('{current_team}')
         // ── PRODUCT CATEGORIES ────────────────────────────
         Route::prefix('product-categories')->name('product-categories.')->group(function () {
             Route::get('/', [ProductCategoryController::class, 'index'])->name('index')
-                ->middleware(EnsureTeamPermission::class.':product-category.view');
+                ->middleware(EnsureTeamPermission::class.':product.category.view');
 
             Route::post('/', [ProductCategoryController::class, 'store'])->name('store')
-                ->middleware(EnsureTeamPermission::class.':product-category.create');
+                ->middleware(EnsureTeamPermission::class.':product.category.create');
 
             Route::get('/{productCategoryId}/history', [ProductCategoryController::class, 'history'])->name('history')
-                ->middleware(EnsureTeamPermission::class.':product-category.view');
+                ->middleware(EnsureTeamPermission::class.':product.category.view');
 
             Route::put('/{productCategoryId}', [ProductCategoryController::class, 'update'])->name('update')
-                ->middleware(EnsureTeamPermission::class.':product-category.update');
+                ->middleware(EnsureTeamPermission::class.':product.category.update');
 
             Route::delete('/{productCategoryId}', [ProductCategoryController::class, 'destroy'])->name('destroy')
-                ->middleware(EnsureTeamPermission::class.':product-category.delete');
+                ->middleware(EnsureTeamPermission::class.':product.category.delete');
         });
 
         // ── PRODUCT STOCKS ────────────────────────────────
@@ -223,37 +231,79 @@ Route::prefix('{current_team}')
         Route::prefix('product-promotions')->name('product-promotions.')->group(function () {
 
             Route::get('/', [ProductPromotionController::class, 'index'])->name('index')
-                ->middleware(EnsureTeamPermission::class . ':product-promotion.view');
+                ->middleware(EnsureTeamPermission::class.':product-promotion.view');
 
             Route::post('/', [ProductPromotionController::class, 'store'])->name('store')
-                ->middleware(EnsureTeamPermission::class . ':product-promotion.create');
+                ->middleware(EnsureTeamPermission::class.':product-promotion.create');
 
             // Static suffix SEBELUM wildcard {productPromotionId}
             Route::get('/{productPromotionId}/history', [ProductPromotionController::class, 'history'])->name('history')
-                ->middleware(EnsureTeamPermission::class . ':product-promotion.view');
+                ->middleware(EnsureTeamPermission::class.':product-promotion.view');
 
             Route::put('/{productPromotionId}', [ProductPromotionController::class, 'update'])->name('update')
-                ->middleware(EnsureTeamPermission::class . ':product-promotion.update');
+                ->middleware(EnsureTeamPermission::class.':product-promotion.update');
 
             Route::delete('/{productPromotionId}', [ProductPromotionController::class, 'destroy'])->name('destroy')
-                ->middleware(EnsureTeamPermission::class . ':product-promotion.delete');
+                ->middleware(EnsureTeamPermission::class.':product-promotion.delete');
         });
 
         // ── POS / KASIR ───────────────────────────────────
-        Route::prefix('pos')->name('pos.')->middleware(EnsureTeamPermission::class.':transaction.create')->group(function () {
-            Route::get('/', [PosController::class, 'index'])->name('index');
-            Route::get('/products/search', [PosController::class, 'searchProducts'])->name('products.search');
-            Route::post('/voucher/validate', [PosController::class, 'validateVoucher'])->name('voucher.validate');
-            Route::post('/promotions/evaluate', [PosController::class, 'evaluatePromotions'])->name('promotions.evaluate');
-            Route::post('/transaction', [PosController::class, 'createTransaction'])->name('transaction.create');
-            Route::post('/transaction/{transaction}/payment', [PosController::class, 'processPayment'])->name('transaction.payment');
-            Route::post('/transaction/{transaction}/void', [PosController::class, 'voidTransaction'])->name('transaction.void');
+        Route::prefix('cashier-operations')->name('cashier-operations.')->group(function () {
+            Route::get('/', [CashierShiftController::class, 'index'])->name('index')
+                ->middleware(EnsureTeamPermission::class.':cashier-shift.view');
+            Route::post('/open', [CashierShiftController::class, 'open'])->name('open')
+                ->middleware(EnsureTeamPermission::class.':cashier-shift.open');
+            Route::post('/{cashierShift}/movements', [CashierShiftController::class, 'movement'])->name('movements.store')
+                ->middleware(EnsureTeamPermission::class.':cashier-shift.manage');
+            Route::post('/{cashierShift}/close', [CashierShiftController::class, 'close'])->name('close')
+                ->middleware(EnsureTeamPermission::class.':cashier-shift.close');
+        });
+
+        Route::prefix('pos')->name('pos.')->group(function () {
+            Route::middleware(EnsureTeamPermission::class.':transaction.create')->group(function () {
+                Route::get('/', [PosController::class, 'index'])->name('index');
+                Route::get('/products/search', [PosController::class, 'searchProducts'])->name('products.search');
+                Route::post('/voucher/validate', [PosController::class, 'validateVoucher'])->name('voucher.validate');
+                Route::post('/promotions/evaluate', [PosController::class, 'evaluatePromotions'])->name('promotions.evaluate');
+                Route::post('/transaction', [PosController::class, 'createTransaction'])->name('transaction.create');
+                Route::post('/transaction/{transaction}/payment', [PosController::class, 'processPayment'])->name('transaction.payment');
+                Route::get('/transaction/{transaction}/receipt', [TransactionReceiptController::class, 'pdf'])->name('transaction.receipt.pdf');
+                Route::post('/transaction/{transaction}/receipt/email', [TransactionReceiptController::class, 'email'])->name('transaction.receipt.email');
+                Route::post('/transaction/{transaction}/receipt/whatsapp', [TransactionReceiptController::class, 'whatsapp'])->name('transaction.receipt.whatsapp');
+            });
+
+            Route::post('/transaction/{transaction}/void', [PosController::class, 'voidTransaction'])
+                ->middleware(EnsureTeamPermission::class.':transaction.void')
+                ->name('transaction.void');
+        });
+
+        Route::prefix('customers')->name('customers.')->group(function () {
+            Route::get('/', [CustomerController::class, 'index'])->name('index')->middleware(EnsureTeamPermission::class.':customer.view');
+            Route::get('/search', [CustomerController::class, 'search'])->name('search')->middleware(EnsureTeamPermission::class.':customer.view,transaction.create');
+            Route::post('/', [CustomerController::class, 'store'])->name('store')->middleware(EnsureTeamPermission::class.':customer.create,transaction.create');
+            Route::put('/{customer}', [CustomerController::class, 'update'])->name('update')->middleware(EnsureTeamPermission::class.':customer.update');
+        });
+
+        Route::prefix('dining-tables')->name('dining-tables.')->group(function () {
+            Route::get('/', [DiningTableController::class, 'index'])->name('index')->middleware(EnsureTeamPermission::class.':dining-table.view,transaction.create');
+            Route::post('/', [DiningTableController::class, 'store'])->name('store')->middleware(EnsureTeamPermission::class.':dining-table.create');
+            Route::put('/{diningTable}', [DiningTableController::class, 'update'])->name('update')->middleware(EnsureTeamPermission::class.':dining-table.update');
+            Route::delete('/{diningTable}', [DiningTableController::class, 'destroy'])->name('destroy')->middleware(EnsureTeamPermission::class.':dining-table.delete');
+        });
+
+        Route::prefix('inventory-operations')->name('inventory-operations.')->group(function () {
+            Route::get('/', [InventoryOperationController::class, 'index'])->name('index')->middleware(EnsureTeamPermission::class.':inventory.view');
+            Route::post('/suppliers', [InventoryOperationController::class, 'storeSupplier'])->name('suppliers.store')->middleware(EnsureTeamPermission::class.':inventory.manage');
+            Route::post('/purchase-orders', [InventoryOperationController::class, 'storePurchaseOrder'])->name('purchase-orders.store')->middleware(EnsureTeamPermission::class.':inventory.manage');
+            Route::post('/purchase-orders/{purchaseOrder}/receive', [InventoryOperationController::class, 'receivePurchaseOrder'])->name('purchase-orders.receive')->middleware(EnsureTeamPermission::class.':inventory.manage');
+            Route::post('/stock-opnames', [InventoryOperationController::class, 'storeStockOpname'])->name('stock-opnames.store')->middleware(EnsureTeamPermission::class.':inventory.manage');
         });
 
         // ── TRANSACTIONS ──────────────────────────────────
         Route::prefix('transactions')->name('transactions.')->group(function () {
 
-            Route::get('/', [TransactionController::class, 'index'])->name('index');
+            Route::get('/', [TransactionController::class, 'index'])->name('index')
+                ->middleware(EnsureTeamPermission::class.':transaction.view');
 
             Route::get('/refunds', [TransactionRefundController::class, 'index'])->name('refunds')
                 ->middleware(EnsureTeamPermission::class.':transaction.refund');

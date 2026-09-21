@@ -15,7 +15,7 @@ class ProductPromotionReward extends Model
     ];
 
     protected $casts = [
-        'quantity'     => 'integer',
+        'quantity' => 'integer',
         'extra_charge' => 'decimal:2',
     ];
 

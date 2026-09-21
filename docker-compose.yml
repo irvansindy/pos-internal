@@ -4,24 +4,46 @@ networks:
   shared_network:
     external: true
 
+x-php-service: &php-service
+  image: pos-internal-app
+  build:
+    context: .
+    dockerfile: docker/php/Dockerfile
+  working_dir: /var/www/html
+  volumes:
+    - .:/var/www/html
+    - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
+  environment:
+    - PHP_OPCACHE_ENABLE=0
+  networks:
+    - pos_internal
+    - shared_network
+
 services:
 
   # ─── PHP-FPM (Laravel 13 + Inertia SSR) ────────────────────────────────────
   php:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
+    <<: *php-service
     container_name: pos_php
     restart: unless-stopped
-    working_dir: /var/www/html
-    volumes:
-      - .:/var/www/html
-      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
-    environment:
-      - PHP_OPCACHE_ENABLE=0
-    networks:
-      - pos_internal     # komunikasi dengan Nginx
-      - shared_network    # akses ke shared_mysql
+
+  # ─── Queue worker ────────────────────────────────────────────────────────
+  queue:
+    <<: *php-service
+    container_name: pos_queue
+    restart: unless-stopped
+    command: php artisan queue:work --sleep=3 --tries=3 --timeout=90
+    depends_on:
+      - php
+
+  # ─── Laravel scheduler ──────────────────────────────────────────────────────
+  scheduler:
+    <<: *php-service
+    container_name: pos_scheduler
+    restart: unless-stopped
+    command: php artisan schedule:work
+    depends_on:
+      - php
 
   # ─── Nginx ─────────────────────────────────────────────────────────────────
   nginx:

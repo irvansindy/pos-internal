@@ -3,7 +3,13 @@ import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { stores as organizationStores } from '@/routes/organizations';
 
 type Props = {
@@ -45,11 +51,12 @@ function formatRupiah(value: string) {
 }
 
 export default function OrganizationCheckout({ invoice, midtrans }: Props) {
-    const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [status, setStatus] = useState<'loading' | 'ready' | 'error'>(() =>
+        invoice.snapToken && midtrans.clientKey ? 'loading' : 'error',
+    );
 
     useEffect(() => {
         if (!invoice.snapToken || !midtrans.clientKey) {
-            setStatus('error');
             return;
         }
 
@@ -109,8 +116,8 @@ export default function OrganizationCheckout({ invoice, midtrans }: Props) {
                         ) : (
                             <>
                                 <p className="text-center text-sm text-destructive">
-                                    Gagal memuat jendela pembayaran. Coba
-                                    muat ulang halaman ini.
+                                    Gagal memuat jendela pembayaran. Coba muat
+                                    ulang halaman ini.
                                 </p>
                                 <Button variant="outline" asChild>
                                     <a href={window.location.href}>

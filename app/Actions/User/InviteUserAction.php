@@ -37,9 +37,9 @@ class InviteUserAction
         }
 
         return TeamInvitation::create([
-            'team_id'    => $team->id,
-            'email'      => $email,
-            'role'       => $role,
+            'team_id' => $team->id,
+            'email' => $email,
+            'role' => $role,
             'invited_by' => $inviter->id,
             'expires_at' => now()->addDays(7),
         ]);

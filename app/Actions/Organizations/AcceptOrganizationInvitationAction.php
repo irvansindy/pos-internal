@@ -12,11 +12,11 @@ class AcceptOrganizationInvitationAction
 {
     /**
      * @throws OrganizationMemberQuotaExceededException when the
-     *         organization's member quota is already full by the time
-     *         this invitation gets accepted (invite-time and accept-time
-     *         can be far apart, and quota can also change in between —
-     *         so this is the authoritative check, not the one in
-     *         InviteOrganizationMemberAction).
+     *                                                  organization's member quota is already full by the time
+     *                                                  this invitation gets accepted (invite-time and accept-time
+     *                                                  can be far apart, and quota can also change in between —
+     *                                                  so this is the authoritative check, not the one in
+     *                                                  InviteOrganizationMemberAction).
      */
     public function execute(User $user, OrganizationInvitation $invitation): void
     {

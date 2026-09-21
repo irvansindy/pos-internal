@@ -4,6 +4,7 @@ use App\Enums\TeamRole;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -50,6 +51,9 @@ test('team members can view but cannot create transactions', function () {
     $member = User::factory()->create();
     $team->members()->attach($member, ['role' => TeamRole::Member->value]);
     $member->switchTeam($team);
+
+    setPermissionsTeamId($team->id);
+    $member->givePermissionTo(Permission::findOrCreate('transaction.view', 'web'));
 
     $response = $this
         ->actingAs($member)

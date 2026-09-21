@@ -3,10 +3,10 @@
 namespace Database\Factories;
 
 use App\Enums\OrganizationRole;
-use App\Enums\SubscriptionStatus;
 use App\Enums\TeamRole;
 use App\Models\Organization;
 use App\Models\Plan;
+use App\Models\Subscription;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -67,7 +67,7 @@ class UserFactory extends Factory
                 'max_owners' => 5,
             ]);
 
-            \App\Models\Subscription::factory()->active()->create([
+            Subscription::factory()->active()->create([
                 'organization_id' => $organization->id,
                 'plan_id' => $plan->id,
             ]);

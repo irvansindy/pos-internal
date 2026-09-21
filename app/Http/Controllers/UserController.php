@@ -9,8 +9,6 @@ use App\Actions\User\ResetUserPasswordAction;
 use App\Actions\User\UpdateUserAction;
 use App\Enums\TeamRole;
 use App\Http\Requests\User\InviteUserRequest;
-use App\Http\Requests\User\ResetPasswordRequest;
-use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\TeamInvitation;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -22,11 +20,11 @@ use Spatie\Permission\Models\Role;
 class UserController extends Controller
 {
     public function __construct(
-        private readonly InviteUserAction        $inviteUser,
-        private readonly UpdateUserAction        $updateUser,
-        private readonly RemoveUserAction        $removeUser,
+        private readonly InviteUserAction $inviteUser,
+        private readonly UpdateUserAction $updateUser,
+        private readonly RemoveUserAction $removeUser,
         private readonly ResetUserPasswordAction $resetPassword,
-        private readonly AcceptInvitationAction  $acceptInvitation,
+        private readonly AcceptInvitationAction $acceptInvitation,
     ) {}
 
     // ── Resolve user dari route parameter secara eksplisit ────────────────────
@@ -35,6 +33,7 @@ class UserController extends Controller
     private function resolveUser(Request $request): User
     {
         $userId = $request->route('userId');
+
         return User::findOrFail($userId);
     }
 
@@ -43,7 +42,7 @@ class UserController extends Controller
     public function index(Request $request): Response
     {
         $authUser = $request->user();
-        $team     = $authUser->currentTeam;
+        $team = $authUser->currentTeam;
 
         setPermissionsTeamId($team->id);
 
@@ -51,15 +50,15 @@ class UserController extends Controller
             ->with(['teamMemberships' => fn ($q) => $q->where('team_id', $team->id)])
             ->get()
             ->map(fn (User $member) => [
-                'id'                => $member->id,
-                'name'              => $member->name,
-                'email'             => $member->email,
+                'id' => $member->id,
+                'name' => $member->name,
+                'email' => $member->email,
                 'email_verified_at' => $member->email_verified_at,
-                'team_role'         => $member->teamRole($team)?->value,
-                'team_role_label'   => $member->teamRole($team)?->label(),
-                'is_owner'          => $member->ownsTeam($team),
-                'roles'             => $member->getRoleNames(),
-                'joined_at'         => $member->pivot->created_at,
+                'team_role' => $member->teamRole($team)?->value,
+                'team_role_label' => $member->teamRole($team)?->label(),
+                'is_owner' => $member->ownsTeam($team),
+                'roles' => $member->getRoleNames(),
+                'joined_at' => $member->pivot->created_at,
             ]);
 
         $availableRoles = Role::where('team_id', $team->id)
@@ -67,12 +66,12 @@ class UserController extends Controller
             ->map(fn ($r) => ['value' => $r->name, 'label' => $r->label ?? ucfirst($r->name)]);
 
         return Inertia::render('users/index', [
-            'members'        => $members,
+            'members' => $members,
             'availableRoles' => $availableRoles,
-            'teamRoles'      => TeamRole::assignable(),
-            'canInvite'      => $authUser->canOnCurrentTeam('user.invite'),
-            'canUpdate'      => $authUser->canOnCurrentTeam('user.update'),
-            'canDelete'      => $authUser->canOnCurrentTeam('user.delete'),
+            'teamRoles' => TeamRole::assignable(),
+            'canInvite' => $authUser->canOnCurrentTeam('user.invite'),
+            'canUpdate' => $authUser->canOnCurrentTeam('user.update'),
+            'canDelete' => $authUser->canOnCurrentTeam('user.delete'),
         ]);
     }
 
@@ -86,16 +85,16 @@ class UserController extends Controller
 
         return Inertia::render('users/show', [
             'member' => [
-                'id'                => $user->id,
-                'name'              => $user->name,
-                'email'             => $user->email,
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
                 'email_verified_at' => $user->email_verified_at,
-                'team_role'         => $user->teamRole($team)?->value,
-                'team_role_label'   => $user->teamRole($team)?->label(),
-                'is_owner'          => $user->ownsTeam($team),
-                'roles'             => $user->getRoleNames(),
-                'permissions'       => $user->getAllPermissions()->pluck('name'),
-                'teams'             => $user->toUserTeams(),
+                'team_role' => $user->teamRole($team)?->value,
+                'team_role_label' => $user->teamRole($team)?->label(),
+                'is_owner' => $user->ownsTeam($team),
+                'roles' => $user->getRoleNames(),
+                'permissions' => $user->getAllPermissions()->pluck('name'),
+                'teams' => $user->toUserTeams(),
             ],
         ]);
     }
@@ -110,11 +109,11 @@ class UserController extends Controller
 
         return Inertia::render('users/edit', [
             'member' => [
-                'id'        => $user->id,
-                'name'      => $user->name,
-                'email'     => $user->email,
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
                 'team_role' => $user->teamRole($team)?->value,
-                'roles'     => $user->getRoleNames(),
+                'roles' => $user->getRoleNames(),
             ],
             'availableRoles' => Role::where('team_id', $team->id)
                 ->get(['id', 'name', 'label'])
@@ -131,7 +130,7 @@ class UserController extends Controller
 
         $validated = $request->validate([
             'team_role' => ['required', 'string'],
-            'role'      => ['nullable', 'string'],
+            'role' => ['nullable', 'string'],
         ]);
 
         $this->updateUser->execute(
@@ -148,17 +147,19 @@ class UserController extends Controller
 
     public function destroy(Request $request): RedirectResponse
     {
-        $user     = $this->resolveUser($request);
+        $user = $this->resolveUser($request);
         $authUser = $request->user();
-        $team     = $authUser->currentTeam;
+        $team = $authUser->currentTeam;
 
         if ($user->id === $authUser->id) {
             Inertia::flash('toast', ['type' => 'error', 'message' => 'Anda tidak dapat menghapus diri sendiri.']);
+
             return back();
         }
 
         if ($user->ownsTeam($team)) {
             Inertia::flash('toast', ['type' => 'error', 'message' => 'Owner tim tidak dapat dihapus dari tim.']);
+
             return back();
         }
 
@@ -180,8 +181,8 @@ class UserController extends Controller
         $validated = $request->validate([
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ], [
-            'password.required'  => 'Password wajib diisi.',
-            'password.min'       => 'Password minimal 8 karakter.',
+            'password.required' => 'Password wajib diisi.',
+            'password.min' => 'Password minimal 8 karakter.',
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
         ]);
 
@@ -203,23 +204,23 @@ class UserController extends Controller
             ->latest()
             ->get()
             ->map(fn (TeamInvitation $inv) => [
-                'id'          => $inv->id,
-                'email'       => $inv->email,
-                'role'        => $inv->role?->value,
-                'role_label'  => $inv->role?->label(),
-                'invited_by'  => $inv->inviter?->name,
-                'expires_at'  => $inv->expires_at,
+                'id' => $inv->id,
+                'email' => $inv->email,
+                'role' => $inv->role?->value,
+                'role_label' => $inv->role?->label(),
+                'invited_by' => $inv->inviter?->name,
+                'expires_at' => $inv->expires_at,
                 'accepted_at' => $inv->accepted_at,
-                'status'      => match (true) {
+                'status' => match (true) {
                     $inv->isAccepted() => 'accepted',
-                    $inv->isExpired()  => 'expired',
-                    default            => 'pending',
+                    $inv->isExpired() => 'expired',
+                    default => 'pending',
                 },
             ]);
 
         return Inertia::render('users/invitations', [
             'invitations' => $invitations,
-            'teamRoles'   => TeamRole::assignable(),
+            'teamRoles' => TeamRole::assignable(),
         ]);
     }
 
@@ -232,7 +233,7 @@ class UserController extends Controller
             inviter: $request->user(),
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => "Undangan berhasil dikirim ke {$request->validated('email')}." ]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Undangan berhasil dikirim ke {$request->validated('email')}."]);
 
         return back();
     }
@@ -270,16 +271,19 @@ class UserController extends Controller
 
         if ($invitation->email !== $user->email) {
             Inertia::flash('toast', ['type' => 'error', 'message' => 'Undangan ini bukan untuk akun Anda.']);
+
             return back();
         }
 
         if ($invitation->isExpired()) {
             Inertia::flash('toast', ['type' => 'error', 'message' => 'Undangan ini sudah kedaluwarsa.']);
+
             return back();
         }
 
         if ($invitation->isAccepted()) {
             Inertia::flash('toast', ['type' => 'info', 'message' => 'Anda sudah bergabung dengan tim ini.']);
+
             return back();
         }
 

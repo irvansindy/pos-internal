@@ -10,10 +10,6 @@ class CreateMenuAction
 {
     /**
      * Create a new menu and auto-create its permission.
-     *
-     * @param Team $team
-     * @param array $data
-     * @return Menu
      */
     public function execute(Team $team, array $data): Menu
     {
@@ -21,18 +17,18 @@ class CreateMenuAction
         $menu = Menu::create($data);
 
         // Auto-create permission: menu.{menu.name}
-        $permissionName = 'menu.' . $menu->name;
-        $permissionLabel = 'menu.' . $menu->label;
+        $permissionName = 'menu.'.$menu->name;
+        $permissionLabel = 'menu.'.$menu->label;
 
         $permission = Permission::firstOrCreate(
             [
-                'name'       => $permissionName,
+                'name' => $permissionName,
                 'guard_name' => 'web',
             ],
             [
-                'label'       => $permissionLabel,
-                'description' => 'Permission untuk menu: ' . $menu->label,
-                'team_id'     => $team->id,
+                'label' => $permissionLabel,
+                'description' => 'Permission untuk menu: '.$menu->label,
+                'team_id' => $team->id,
             ]
         );
 

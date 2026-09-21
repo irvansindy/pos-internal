@@ -15,7 +15,7 @@ class SyncRolePermissionsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'permissions'   => ['array'],
+            'permissions' => ['array'],
             'permissions.*' => [
                 'string',
                 Rule::exists('permissions', 'name')->where('guard_name', 'web'),
@@ -26,7 +26,7 @@ class SyncRolePermissionsRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'permissions.array'    => 'Format permission tidak valid.',
+            'permissions.array' => 'Format permission tidak valid.',
             'permissions.*.exists' => 'Permission tidak ditemukan.',
         ];
     }

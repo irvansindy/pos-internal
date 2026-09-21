@@ -52,4 +52,14 @@ class Product extends Model
     {
         return $this->hasMany(TransactionItem::class);
     }
+
+    public function purchaseOrderItems(): HasMany
+    {
+        return $this->hasMany(PurchaseOrderItem::class);
+    }
+
+    public function stockOpnameItems(): HasMany
+    {
+        return $this->hasMany(StockOpnameItem::class);
+    }
 }

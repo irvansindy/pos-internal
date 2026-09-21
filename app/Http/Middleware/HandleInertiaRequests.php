@@ -3,7 +3,9 @@
 namespace App\Http\Middleware;
 
 use App\Models\Menu;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Session;
 use Inertia\Middleware;
 
@@ -43,6 +45,7 @@ class HandleInertiaRequests extends Middleware
                     'email' => $user->email,
                     'email_verified_at' => $user->email_verified_at,
                     'two_factor_enabled' => ! empty($user->two_factor_secret),
+                    'is_platform_admin' => (bool) $user->is_platform_admin,
                     'current_team' => $user->currentTeam ? [
                         'id' => $user->currentTeam->id,
                         'name' => $user->currentTeam->name,
@@ -63,9 +66,9 @@ class HandleInertiaRequests extends Middleware
             // ketika request belum melewati StartSession middleware
             'flash' => [
                 'success' => fn () => $this->getFlash($request, 'success'),
-                'error'   => fn () => $this->getFlash($request, 'error'),
+                'error' => fn () => $this->getFlash($request, 'error'),
                 'warning' => fn () => $this->getFlash($request, 'warning'),
-                'info'    => fn () => $this->getFlash($request, 'info'),
+                'info' => fn () => $this->getFlash($request, 'info'),
             ],
         ];
     }
@@ -86,19 +89,21 @@ class HandleInertiaRequests extends Middleware
     /**
      * Build the navigation tree for the current user on their current team.
      */
-    private function buildNavigation(\App\Models\User $user): array
+    private function buildNavigation(User $user): array
     {
         return $user->accessibleMenus()
-            ->map(fn (\App\Models\Menu $menu) => [
+            ->map(fn (Menu $menu) => [
                 'name' => $menu->name,
                 'label' => $menu->label,
                 'route' => $menu->route,
+                'href' => $this->resolveMenuUrl($menu->route, $user),
                 'icon' => $menu->icon,
                 'module' => $menu->module,
-                'children' => $menu->children->map(fn (\App\Models\Menu $child) => [
+                'children' => $menu->children->map(fn (Menu $child) => [
                     'name' => $child->name,
                     'label' => $child->label,
                     'route' => $child->route,
+                    'href' => $this->resolveMenuUrl($child->route, $user),
                     'icon' => $child->icon,
                 ])->values()->toArray(),
             ])
@@ -107,10 +112,22 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
+     * Resolve a database-backed route name into a team-scoped relative URL.
+     */
+    private function resolveMenuUrl(?string $routeName, User $user): ?string
+    {
+        if (! $routeName || ! $user->currentTeam || ! Route::has($routeName)) {
+            return null;
+        }
+
+        return route($routeName, ['current_team' => $user->currentTeam->slug], absolute: false);
+    }
+
+    /**
      * Get all permission names for the user on their current team.
      * Returns empty array for non-owners, full list triggers owner bypass on frontend.
      */
-    private function getUserPermissions(\App\Models\User $user): array
+    private function getUserPermissions(User $user): array
     {
         $team = $user->currentTeam;
 

@@ -142,6 +142,41 @@ class Team extends Model
         return $this->hasMany(Transaction::class);
     }
 
+    public function customers(): HasMany
+    {
+        return $this->hasMany(Customer::class);
+    }
+
+    public function diningTables(): HasMany
+    {
+        return $this->hasMany(DiningTable::class);
+    }
+
+    public function suppliers(): HasMany
+    {
+        return $this->hasMany(Supplier::class);
+    }
+
+    public function purchaseOrders(): HasMany
+    {
+        return $this->hasMany(PurchaseOrder::class);
+    }
+
+    public function stockOpnames(): HasMany
+    {
+        return $this->hasMany(StockOpname::class);
+    }
+
+    public function outgoingStockTransfers(): HasMany
+    {
+        return $this->hasMany(StockTransfer::class, 'from_team_id');
+    }
+
+    public function incomingStockTransfers(): HasMany
+    {
+        return $this->hasMany(StockTransfer::class, 'to_team_id');
+    }
+
     public function transactionRefunds(): HasMany
     {
         return $this->hasMany(TransactionRefund::class);
@@ -150,6 +185,16 @@ class Team extends Model
     public function transactionReturns(): HasMany
     {
         return $this->hasMany(TransactionReturn::class);
+    }
+
+    public function cashierShifts(): HasMany
+    {
+        return $this->hasMany(CashierShift::class);
+    }
+
+    public function transactionPayments(): HasMany
+    {
+        return $this->hasMany(TransactionPayment::class);
     }
 
     /**

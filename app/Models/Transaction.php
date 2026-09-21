@@ -9,24 +9,35 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Transaction extends Model
 {
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_VOID = 'void';
 
     public const PAYMENT_STATUS_PAID = 'paid';
+
     public const PAYMENT_STATUS_UNPAID = 'unpaid';
+
     public const PAYMENT_STATUS_PARTIAL = 'partial';
 
     protected $fillable = [
         'team_id',
         'user_id',
+        'cashier_shift_id',
         'voucher_id',
+        'customer_id',
+        'dining_table_id',
         'invoice_number',
         'customer_name',
+        'customer_phone',
+        'customer_email',
         'status',
         'payment_status',
         'payment_method',
         'subtotal',
         'discount_total',
+        'points_redeemed',
+        'points_discount_total',
         'tax_total',
         'grand_total',
         'paid_amount',
@@ -41,6 +52,8 @@ class Transaction extends Model
     protected $casts = [
         'subtotal' => 'decimal:2',
         'discount_total' => 'decimal:2',
+        'points_redeemed' => 'integer',
+        'points_discount_total' => 'decimal:2',
         'tax_total' => 'decimal:2',
         'grand_total' => 'decimal:2',
         'paid_amount' => 'decimal:2',
@@ -59,6 +72,11 @@ class Transaction extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function cashierShift(): BelongsTo
+    {
+        return $this->belongsTo(CashierShift::class);
+    }
+
     public function voidedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'voided_by');
@@ -67,6 +85,21 @@ class Transaction extends Model
     public function voucher(): BelongsTo
     {
         return $this->belongsTo(Voucher::class);
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function diningTable(): BelongsTo
+    {
+        return $this->belongsTo(DiningTable::class);
+    }
+
+    public function pointTransactions(): HasMany
+    {
+        return $this->hasMany(CustomerPointTransaction::class);
     }
 
     public function items(): HasMany
@@ -82,5 +115,10 @@ class Transaction extends Model
     public function returns(): HasMany
     {
         return $this->hasMany(TransactionReturn::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(TransactionPayment::class);
     }
 }

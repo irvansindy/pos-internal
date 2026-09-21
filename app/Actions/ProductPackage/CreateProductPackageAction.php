@@ -5,6 +5,7 @@ namespace App\Actions\ProductPackage;
 use App\Models\ProductPackage;
 use App\Models\ProductPackageAddonGroup;
 use App\Models\Team;
+use App\Support\TeamCatalogReferenceGuard;
 use Illuminate\Support\Facades\DB;
 
 class CreateProductPackageAction
@@ -40,14 +41,20 @@ class CreateProductPackageAction
     public function execute(Team $team, array $data): ProductPackage
     {
         return DB::transaction(function () use ($team, $data) {
+            TeamCatalogReferenceGuard::ensure(
+                $team,
+                $this->productIds($data),
+                $data['category_id'] ?? null,
+            );
+
             /** @var ProductPackage $package */
             $package = $team->productPackages()->create([
                 'category_id' => $data['category_id'] ?? null,
-                'sku'         => $data['sku'],
-                'name'        => $data['name'],
+                'sku' => $data['sku'],
+                'name' => $data['name'],
                 'description' => $data['description'] ?? null,
-                'base_price'  => $data['base_price'],
-                'is_active'   => $data['is_active'] ?? true,
+                'base_price' => $data['base_price'],
+                'is_active' => $data['is_active'] ?? true,
             ]);
 
             $this->syncItems($package, $data['items'] ?? []);
@@ -57,6 +64,14 @@ class CreateProductPackageAction
         });
     }
 
+    private function productIds(array $data): array
+    {
+        return collect($data['items'] ?? [])->pluck('product_id')
+            ->concat(collect($data['addon_groups'] ?? [])->pluck('default_product_id'))
+            ->concat(collect($data['addon_groups'] ?? [])->flatMap(fn (array $group) => collect($group['options'] ?? [])->pluck('product_id')))
+            ->all();
+    }
+
     private function syncItems(ProductPackage $package, array $items): void
     {
         $package->items()->delete();
@@ -64,8 +79,8 @@ class CreateProductPackageAction
         foreach ($items as $item) {
             $package->items()->create([
                 'product_id' => $item['product_id'],
-                'quantity'   => $item['quantity'] ?? 1,
-                'note'       => $item['note'] ?? null,
+                'quantity' => $item['quantity'] ?? 1,
+                'note' => $item['note'] ?? null,
             ]);
         }
     }
@@ -78,17 +93,17 @@ class CreateProductPackageAction
         foreach ($groups as $index => $groupData) {
             /** @var ProductPackageAddonGroup $group */
             $group = $package->addonGroups()->create([
-                'name'               => $groupData['name'],
+                'name' => $groupData['name'],
                 'default_product_id' => $groupData['default_product_id'] ?? null,
-                'is_required'        => $groupData['is_required'] ?? false,
-                'sort_order'         => $groupData['sort_order'] ?? $index,
+                'is_required' => $groupData['is_required'] ?? false,
+                'sort_order' => $groupData['sort_order'] ?? $index,
             ]);
 
             foreach ($groupData['options'] ?? [] as $optIndex => $option) {
                 $group->options()->create([
-                    'product_id'   => $option['product_id'],
+                    'product_id' => $option['product_id'],
                     'extra_charge' => $option['extra_charge'] ?? 0,
-                    'sort_order'   => $option['sort_order'] ?? $optIndex,
+                    'sort_order' => $option['sort_order'] ?? $optIndex,
                 ]);
             }
         }

@@ -107,6 +107,7 @@ function buildUrl(path: string, teamSlug: string): string {
 
 function formatCurrency(value: string | number): string {
     const num = typeof value === 'string' ? parseFloat(value) : value;
+
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
@@ -123,7 +124,10 @@ function formatDate(value: string): string {
 }
 
 function formatDateShort(value: string | null): string {
-    if (!value) return '∞';
+    if (!value) {
+        return '∞';
+    }
+
     return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium' }).format(
         new Date(value),
     );
@@ -149,7 +153,9 @@ function promotionStatus(promo: PromotionData): {
     label: string;
     color: BadgeColor;
 } {
-    if (!promo.is_active) return { label: 'Nonaktif', color: 'default' };
+    if (!promo.is_active) {
+        return { label: 'Nonaktif', color: 'default' };
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -171,11 +177,11 @@ type BadgeColor = 'default' | 'blue' | 'green' | 'amber' | 'red' | 'purple';
 
 const BADGE_COLORS: Record<BadgeColor, { bg: string; text: string }> = {
     default: { bg: 'var(--muted)', text: 'var(--muted-foreground)' },
-    blue:    { bg: 'hsl(214 100% 95%)', text: 'hsl(214 100% 40%)' },
-    green:   { bg: 'hsl(142 76% 92%)',  text: 'hsl(142 76% 30%)' },
-    amber:   { bg: 'hsl(43 96% 92%)',   text: 'hsl(43 96% 30%)' },
-    red:     { bg: 'hsl(0 72% 94%)',    text: 'hsl(0 72% 40%)' },
-    purple:  { bg: 'hsl(270 60% 94%)',  text: 'hsl(270 60% 40%)' },
+    blue: { bg: 'hsl(214 100% 95%)', text: 'hsl(214 100% 40%)' },
+    green: { bg: 'hsl(142 76% 92%)', text: 'hsl(142 76% 30%)' },
+    amber: { bg: 'hsl(43 96% 92%)', text: 'hsl(43 96% 30%)' },
+    red: { bg: 'hsl(0 72% 94%)', text: 'hsl(0 72% 40%)' },
+    purple: { bg: 'hsl(270 60% 94%)', text: 'hsl(270 60% 40%)' },
 };
 
 function Badge({
@@ -186,6 +192,7 @@ function Badge({
     color?: BadgeColor;
 }) {
     const c = BADGE_COLORS[color];
+
     return (
         <span
             style={{
@@ -355,7 +362,9 @@ function Field({
                     </span>
                 )}
                 {!optional && (
-                    <span style={{ color: 'hsl(0 72% 50%)', marginLeft: '2px' }}>
+                    <span
+                        style={{ color: 'hsl(0 72% 50%)', marginLeft: '2px' }}
+                    >
                         *
                     </span>
                 )}
@@ -391,9 +400,7 @@ const inputStyle = (hasError?: boolean): React.CSSProperties => ({
     width: '100%',
     height: '38px',
     borderRadius: '8px',
-    border: hasError
-        ? '1px solid hsl(0 72% 50%)'
-        : '1px solid var(--border)',
+    border: hasError ? '1px solid hsl(0 72% 50%)' : '1px solid var(--border)',
     backgroundColor: 'var(--background)',
     color: 'var(--foreground)',
     fontSize: '13px',
@@ -413,7 +420,11 @@ function SectionDivider({ label }: { label: string }) {
             }}
         >
             <div
-                style={{ flex: 1, height: '1px', backgroundColor: 'var(--border)' }}
+                style={{
+                    flex: 1,
+                    height: '1px',
+                    backgroundColor: 'var(--border)',
+                }}
             />
             <span
                 style={{
@@ -428,7 +439,11 @@ function SectionDivider({ label }: { label: string }) {
                 {label}
             </span>
             <div
-                style={{ flex: 1, height: '1px', backgroundColor: 'var(--border)' }}
+                style={{
+                    flex: 1,
+                    height: '1px',
+                    backgroundColor: 'var(--border)',
+                }}
             />
         </div>
     );
@@ -691,7 +706,9 @@ function PromotionFormFields({
                 </p>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div
+                style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+            >
                 {data.triggers.length === 0 && (
                     <p
                         style={{
@@ -812,7 +829,9 @@ function PromotionFormFields({
                 </p>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div
+                style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+            >
                 {data.rewards.length === 0 && (
                     <p
                         style={{
@@ -955,7 +974,9 @@ function PromotionFormFields({
                                     placeholder="0 = gratis"
                                     style={{
                                         ...inputStyle(
-                                            !!err[`rewards.${idx}.extra_charge`],
+                                            !!err[
+                                                `rewards.${idx}.extra_charge`
+                                            ],
                                         ),
                                         paddingLeft: '28px',
                                         backgroundColor: 'var(--background)',
@@ -1023,7 +1044,7 @@ function CreatePromotionModal({
             <ModalHeader
                 icon={<Zap size={20} />}
                 title="Buat Promosi Baru"
-                subtitle='Atur syarat pembelian dan hadiah otomatis (Buy X Get Y)'
+                subtitle="Atur syarat pembelian dan hadiah otomatis (Buy X Get Y)"
             />
             <PromotionFormFields
                 data={data}
@@ -1630,6 +1651,7 @@ function PromotionCard({
                             {promotion.rewards.map((reward) => {
                                 const isFree =
                                     parseFloat(reward.extra_charge) === 0;
+
                                 return (
                                     <div
                                         key={reward.id}
@@ -1747,10 +1769,12 @@ export default function ProductPromotionsIndex({
 
     const filtered = useMemo(() => {
         const kw = search.trim().toLowerCase();
-        if (!kw) return promotions.data;
-        return promotions.data.filter((p) =>
-            p.name.toLowerCase().includes(kw),
-        );
+
+        if (!kw) {
+            return promotions.data;
+        }
+
+        return promotions.data.filter((p) => p.name.toLowerCase().includes(kw));
     }, [promotions.data, search]);
 
     return (
@@ -1940,8 +1964,7 @@ export default function ProductPromotionsIndex({
                                     ← Sebelumnya
                                 </button>
                             )}
-                            {promotions.current_page <
-                                promotions.last_page && (
+                            {promotions.current_page < promotions.last_page && (
                                 <button
                                     onClick={() =>
                                         router.get(
@@ -2030,7 +2053,9 @@ export default function ProductPromotionsIndex({
                                             >
                                                 {activityLabel(a.action)}
                                             </Badge>
-                                            <strong style={{ fontSize: '13px' }}>
+                                            <strong
+                                                style={{ fontSize: '13px' }}
+                                            >
                                                 {a.subject_name ?? 'Promosi'}
                                             </strong>
                                         </div>

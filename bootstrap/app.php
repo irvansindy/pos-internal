@@ -8,7 +8,12 @@ use App\Http\Middleware\SetTeamUrlDefaults;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Support\Facades\Route;
+use Spatie\Permission\Middleware\PermissionMiddleware;
+use Spatie\Permission\Middleware\RoleMiddleware;
+use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -22,22 +27,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         /**
-         * Exclude semua team-scoped POST routes dari CSRF verification.
-         * Keamanan tetap terjaga karena route ini dilindungi auth + EnsureTeamMembership.
-         *
-         * webhooks/midtrans dikecualikan karena Midtrans memanggil endpoint
-         * ini langsung (tanpa session/CSRF token) — keamanan endpoint ini
-         * dijaga lewat verifikasi signature Midtrans sendiri, bukan CSRF
-         * (lihat HandleMidtransNotificationAction).
+         * Midtrans calls this endpoint without a browser session. Its request
+         * authenticity is verified using the Midtrans signature in the
+         * notification handler.
          */
         $middleware->preventRequestForgery(except: [
-            '*/users/*/set-password',
-            '*/users/*/reset-password',
-            '*/users',
-            '*/invitations',
-            '*/invitations/*',
-            '*/roles',
-            '*/roles/*',
             'webhooks/midtrans',
         ]);
 
@@ -53,7 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             SetTeamUrlDefaults::class,
             HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            AddLinkHeadersForPreloadedAssets::class,
         ]);
 
         /**
@@ -62,12 +56,12 @@ return Application::configure(basePath: dirname(__DIR__))
          * Versi kita pakai URL absolut /{team-slug}/dashboard.
          */
         $middleware->alias([
-            'guest'              => RedirectIfAuthenticated::class,
-            'team.context'       => SetTeamContext::class,
-            'team.permission'    => EnsureTeamPermission::class,
-            'role'               => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission'         => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            'guest' => RedirectIfAuthenticated::class,
+            'team.context' => SetTeamContext::class,
+            'team.permission' => EnsureTeamPermission::class,
+            'role' => RoleMiddleware::class,
+            'permission' => PermissionMiddleware::class,
+            'role_or_permission' => RoleOrPermissionMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
@@ -75,10 +69,11 @@ return Application::configure(basePath: dirname(__DIR__))
          * Handle 419 CSRF token mismatch — kembalikan ke halaman sebelumnya
          * dengan pesan error yang jelas, daripada menampilkan blank page.
          */
-        $exceptions->respond(function (\Symfony\Component\HttpFoundation\Response $response) {
+        $exceptions->respond(function (Response $response) {
             if ($response->getStatusCode() === 419) {
                 return back()->with('error', 'Sesi Anda telah habis. Silakan muat ulang halaman dan coba lagi.');
             }
+
             return $response;
         });
     })->create();

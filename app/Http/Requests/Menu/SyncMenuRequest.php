@@ -22,9 +22,9 @@ class SyncMenuRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'menu_ids.array'     => 'Menu IDs harus berupa array.',
+            'menu_ids.array' => 'Menu IDs harus berupa array.',
             'menu_ids.*.integer' => 'Setiap ID menu harus berupa angka.',
-            'menu_ids.*.exists'  => 'Menu dengan ID tersebut tidak ditemukan.',
+            'menu_ids.*.exists' => 'Menu dengan ID tersebut tidak ditemukan.',
         ];
     }
 }

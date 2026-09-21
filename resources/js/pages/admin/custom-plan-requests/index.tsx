@@ -41,7 +41,7 @@ export default function AdminCustomPlanRequestsIndex({
         <>
             <Head title="Custom Plan Requests" />
 
-            <div className="mx-auto flex max-w-3xl flex-col space-y-6 p-6">
+            <div className="flex max-w-4xl flex-col space-y-6">
                 <Heading
                     variant="small"
                     title="Custom Plan Requests"
@@ -57,10 +57,12 @@ export default function AdminCustomPlanRequestsIndex({
                                     ? 'default'
                                     : 'outline'
                             }
-                            size="sm"
+                            className="h-11"
                             asChild
                         >
-                            <Link href={`/admin/custom-plan-requests?status=${filter.value}`}>
+                            <Link
+                                href={`/admin/custom-plan-requests?status=${filter.value}`}
+                            >
                                 {filter.label}
                             </Link>
                         </Button>
@@ -87,11 +89,14 @@ export default function AdminCustomPlanRequestsIndex({
                             <CardContent className="space-y-3">
                                 <p className="text-sm text-muted-foreground">
                                     {request.requestedByName} (
-                                    {request.requestedByEmail}) — minta{' '}
-                                    {request.requestedMaxStores ?? '—'} toko,{' '}
-                                    {request.requestedMaxOwners ?? '—'} owner.
-                                    Toko saat ini: {request.currentStoreCount}
-                                    .
+                                    {request.requestedByEmail}), meminta{' '}
+                                    {request.requestedMaxStores ??
+                                        'tidak ditentukan'}{' '}
+                                    toko,{' '}
+                                    {request.requestedMaxOwners ??
+                                        'tidak ditentukan'}{' '}
+                                    owner. Toko saat ini:{' '}
+                                    {request.currentStoreCount}.
                                 </p>
 
                                 {request.message ? (
@@ -102,7 +107,7 @@ export default function AdminCustomPlanRequestsIndex({
 
                                 {request.status === 'pending' ? (
                                     <Button
-                                        size="sm"
+                                        className="h-11"
                                         onClick={() =>
                                             setActiveRequest(request)
                                         }
@@ -132,7 +137,9 @@ export default function AdminCustomPlanRequestsIndex({
                     request={activeRequest}
                     open={!!activeRequest}
                     onOpenChange={(open) => {
-                        if (!open) setActiveRequest(null);
+                        if (!open) {
+                            setActiveRequest(null);
+                        }
                     }}
                 />
             ) : null}

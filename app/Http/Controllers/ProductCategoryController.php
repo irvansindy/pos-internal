@@ -49,9 +49,9 @@ class ProductCategoryController extends Controller
             'categories' => $categories,
             'recentActivity' => $recentActivity,
             'teamSlug' => $team->slug,
-            'canCreate' => $authUser->canOnCurrentTeam('product-category.create'),
-            'canUpdate' => $authUser->canOnCurrentTeam('product-category.update'),
-            'canDelete' => $authUser->canOnCurrentTeam('product-category.delete'),
+            'canCreate' => $authUser->canOnCurrentTeam('product.category.create'),
+            'canUpdate' => $authUser->canOnCurrentTeam('product.category.update'),
+            'canDelete' => $authUser->canOnCurrentTeam('product.category.delete'),
         ]);
     }
 
@@ -174,8 +174,8 @@ class ProductCategoryController extends Controller
             'category' => $category,
             'activity' => $activity,
             'teamSlug' => $team->slug,
-            'canUpdate' => $authUser->canOnCurrentTeam('product-category.update'),
-            'canDelete' => $authUser->canOnCurrentTeam('product-category.delete'),
+            'canUpdate' => $authUser->canOnCurrentTeam('product.category.update'),
+            'canDelete' => $authUser->canOnCurrentTeam('product.category.delete'),
         ]);
     }
 

@@ -12,7 +12,6 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
-use RuntimeException;
 
 class CreateNewUser implements CreatesNewUsers
 {
@@ -47,11 +46,7 @@ class CreateNewUser implements CreatesNewUsers
             // Setiap user baru langsung dapat 1 organization (akun
             // berlangganan) di plan Basic dengan masa trial, supaya
             // langsung bisa dipakai tanpa perlu proses checkout dulu.
-            $basicPlan = Plan::findByCode(PlanCode::Basic);
-
-            if (! $basicPlan) {
-                throw new RuntimeException('Plan "basic" belum ada — jalankan PlanSeeder terlebih dahulu.');
-            }
+            $basicPlan = Plan::findByCode(PlanCode::Basic) ?? Plan::defaultBasic();
 
             $organization = $this->createOrganization->execute(
                 user: $user,

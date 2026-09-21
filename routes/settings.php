@@ -3,12 +3,14 @@
 use App\Http\Controllers\Organizations\CheckoutController;
 use App\Http\Controllers\Organizations\CustomPlanRequestController;
 use App\Http\Controllers\Organizations\OrganizationController;
+use App\Http\Controllers\Organizations\OrganizationDashboardController;
 use App\Http\Controllers\Organizations\OrganizationInvitationController;
 use App\Http\Controllers\Organizations\OrganizationInvoiceController;
 use App\Http\Controllers\Organizations\OrganizationMemberController;
+use App\Http\Controllers\Organizations\StockTransferController;
 use App\Http\Controllers\Organizations\SubscriptionController;
-use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\NotificationPreferenceController;
+use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Teams\TeamController;
 use App\Http\Controllers\Teams\TeamInvitationController;
@@ -24,6 +26,12 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('settings/organization/dashboard', OrganizationDashboardController::class)->name('organizations.dashboard');
+    Route::get('settings/organization/stock-transfers', [StockTransferController::class, 'index'])->name('organizations.stock-transfers.index');
+    Route::post('settings/organization/stock-transfers', [StockTransferController::class, 'store'])->name('organizations.stock-transfers.store');
+    Route::post('settings/organization/stock-transfers/{stockTransfer}/ship', [StockTransferController::class, 'ship'])->name('organizations.stock-transfers.ship');
+    Route::post('settings/organization/stock-transfers/{stockTransfer}/receive', [StockTransferController::class, 'receive'])->name('organizations.stock-transfers.receive');
+    Route::post('settings/organization/stock-transfers/{stockTransfer}/cancel', [StockTransferController::class, 'cancel'])->name('organizations.stock-transfers.cancel');
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('settings/security', [SecurityController::class, 'edit'])->name('security.edit');
@@ -42,8 +50,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // ── ORGANIZATION (akun berlangganan / "Toko Saya") ────────
     Route::get('settings/organization/stores', [OrganizationController::class, 'stores'])->name('organizations.stores');
-    Route::post('settings/organization/upgrade', [OrganizationController::class, 'upgrade'])->name('organizations.upgrade');
-
     // ── CHECKOUT (Midtrans Snap) ───────────────────────────────
     Route::post('settings/organization/checkout', [CheckoutController::class, 'store'])->name('organizations.checkout.store');
     Route::get('settings/organization/checkout/{invoice:order_id}', [CheckoutController::class, 'show'])->name('organizations.checkout.show');

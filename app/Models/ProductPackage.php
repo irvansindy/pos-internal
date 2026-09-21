@@ -20,7 +20,7 @@ class ProductPackage extends Model
 
     protected $casts = [
         'base_price' => 'decimal:2',
-        'is_active'  => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     // ── Relationships ─────────────────────────────────────

@@ -17,6 +17,9 @@ type Props = {
     canRegister: boolean;
 };
 
+const fieldClass =
+    'border-[#65756d] bg-white focus-visible:border-[#123c30] focus-visible:ring-[#123c30] dark:border-[#7d8e85] dark:bg-[#0d1512] dark:focus-visible:border-[#edf2ec] dark:focus-visible:ring-[#edf2ec]';
+
 export default function Login({
     status,
     canResetPassword,
@@ -24,41 +27,57 @@ export default function Login({
 }: Props) {
     return (
         <>
-            <Head title="Log in" />
+            <Head title="Masuk" />
+
+            {status && (
+                <div
+                    className="mb-6 border border-[#65756d] bg-[#e4ece6] px-4 py-3 text-sm font-medium text-[#123c30] dark:border-[#7d8e85] dark:bg-[#1d2b24] dark:text-[#dce8e0]"
+                    role="status"
+                >
+                    {status}
+                </div>
+            )}
 
             <Form
                 {...store.form()}
                 resetOnSuccess={['password']}
+                disableWhileProcessing
                 className="flex flex-col gap-6"
             >
                 {({ processing, errors }) => (
                     <>
-                        <div className="grid gap-6">
+                        <div className="grid gap-5">
                             <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
+                                <Label htmlFor="email">Email</Label>
                                 <Input
                                     id="email"
                                     type="email"
                                     name="email"
                                     required
                                     autoFocus
-                                    tabIndex={1}
                                     autoComplete="email"
-                                    placeholder="email@example.com"
+                                    placeholder="nama@toko.com"
+                                    aria-invalid={Boolean(errors.email)}
+                                    aria-describedby={
+                                        errors.email ? 'email-error' : undefined
+                                    }
+                                    className={fieldClass}
                                 />
-                                <InputError message={errors.email} />
+                                <InputError
+                                    id="email-error"
+                                    message={errors.email}
+                                />
                             </div>
 
                             <div className="grid gap-2">
-                                <div className="flex items-center">
-                                    <Label htmlFor="password">Password</Label>
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <Label htmlFor="password">Kata sandi</Label>
                                     {canResetPassword && (
                                         <TextLink
                                             href={request()}
-                                            className="ml-auto text-sm"
-                                            tabIndex={5}
+                                            className="text-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#123c30] dark:focus-visible:outline-[#f3f1e9]"
                                         >
-                                            Forgot password?
+                                            Lupa kata sandi?
                                         </TextLink>
                                     )}
                                 </div>
@@ -66,56 +85,62 @@ export default function Login({
                                     id="password"
                                     name="password"
                                     required
-                                    tabIndex={2}
                                     autoComplete="current-password"
-                                    placeholder="Password"
+                                    placeholder="Masukkan kata sandi"
+                                    aria-invalid={Boolean(errors.password)}
+                                    aria-describedby={
+                                        errors.password
+                                            ? 'password-error'
+                                            : undefined
+                                    }
+                                    className={fieldClass}
                                 />
-                                <InputError message={errors.password} />
+                                <InputError
+                                    id="password-error"
+                                    message={errors.password}
+                                />
                             </div>
 
-                            <div className="flex items-center space-x-3">
+                            <div className="flex min-h-11 items-center gap-3">
                                 <Checkbox
                                     id="remember"
                                     name="remember"
-                                    tabIndex={3}
+                                    className="size-5 border-[#65756d] focus-visible:ring-[#123c30] dark:border-[#7d8e85] dark:focus-visible:ring-[#edf2ec]"
                                 />
-                                <Label htmlFor="remember">Remember me</Label>
+                                <Label htmlFor="remember">Ingat saya</Label>
                             </div>
 
                             <Button
                                 type="submit"
-                                className="mt-4 w-full"
-                                tabIndex={4}
+                                className="mt-1 min-h-12 w-full bg-[#b9472d] font-semibold text-white hover:bg-[#963820] focus-visible:border-[#123c30] focus-visible:ring-[#123c30] dark:focus-visible:border-[#edf2ec] dark:focus-visible:ring-[#edf2ec]"
                                 disabled={processing}
                                 data-test="login-button"
                             >
                                 {processing && <Spinner />}
-                                Log in
+                                {processing ? 'Sedang masuk...' : 'Masuk'}
                             </Button>
                         </div>
 
                         {canRegister && (
-                            <div className="text-center text-sm text-muted-foreground">
-                                Don't have an account?{' '}
-                                <TextLink href={register()} tabIndex={5}>
-                                    Sign up
+                            <p className="border-t border-[#aab3ae] pt-5 text-sm text-[#53635b] dark:border-[#46544d] dark:text-[#a9b7af]">
+                                Belum punya akun?{' '}
+                                <TextLink
+                                    href={register()}
+                                    className="font-semibold text-[#123c30] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#123c30] dark:text-[#edf2ec] dark:focus-visible:outline-[#f3f1e9]"
+                                >
+                                    Buat akun toko
                                 </TextLink>
-                            </div>
+                            </p>
                         )}
                     </>
                 )}
             </Form>
-
-            {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
-                    {status}
-                </div>
-            )}
         </>
     );
 }
 
 Login.layout = {
-    title: 'Log in to your account',
-    description: 'Enter your email and password below to log in',
+    title: 'Masuk dan lanjutkan kerja.',
+    description:
+        'Gunakan akun yang terhubung ke organisasi dan toko tempat Anda bekerja.',
 };

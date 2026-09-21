@@ -65,16 +65,13 @@ class HandleMidtransNotificationAction
 
         match (true) {
             in_array($transactionStatus, ['capture', 'settlement'], true)
-                && ($fraudStatus === null || $fraudStatus === 'accept')
-                => $this->markPaid($invoice),
+                && ($fraudStatus === null || $fraudStatus === 'accept') => $this->markPaid($invoice),
 
             $transactionStatus === 'pending' => null, // still waiting, nothing to do
 
-            in_array($transactionStatus, ['deny', 'cancel'], true)
-                => $this->markFailed($invoice, InvoiceStatus::Failed),
+            in_array($transactionStatus, ['deny', 'cancel'], true) => $this->markFailed($invoice, InvoiceStatus::Failed),
 
-            $transactionStatus === 'expire'
-                => $this->markFailed($invoice, InvoiceStatus::Expired),
+            $transactionStatus === 'expire' => $this->markFailed($invoice, InvoiceStatus::Expired),
 
             default => Log::info('Midtrans transaction_status tidak ditangani.', [
                 'order_id' => $orderId,

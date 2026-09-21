@@ -14,19 +14,19 @@ class UpdateUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'      => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'team_role' => ['required', 'string', 'in:admin,member'],
-            'role'      => ['nullable', 'string', 'exists:roles,name'],
+            'role' => ['nullable', 'string', 'exists:roles,name'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'name.required'      => 'Nama wajib diisi.',
+            'name.required' => 'Nama wajib diisi.',
             'team_role.required' => 'Team role wajib dipilih.',
-            'team_role.in'       => 'Team role tidak valid.',
-            'role.exists'        => 'Role tidak ditemukan.',
+            'team_role.in' => 'Team role tidak valid.',
+            'role.exists' => 'Role tidak ditemukan.',
         ];
     }
 }

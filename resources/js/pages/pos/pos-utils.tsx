@@ -41,7 +41,9 @@ export function formatNumberInput(value: string): string {
     }).format(amount);
 }
 
-export function paymentStatusLabel(status: RecentTransaction['payment_status']): string {
+export function paymentStatusLabel(
+    status: RecentTransaction['payment_status'],
+): string {
     const labels: Record<RecentTransaction['payment_status'], string> = {
         paid: 'Lunas',
         partial: 'Sebagian',
@@ -63,7 +65,8 @@ export function itemTypeLabel(type: PosItem['item_type']): string {
 
 export function remainingPayment(transaction: RecentTransaction): number {
     return Math.max(
-        parseFloat(transaction.grand_total || '0') - parseFloat(transaction.paid_amount || '0'),
+        parseFloat(transaction.grand_total || '0') -
+            parseFloat(transaction.paid_amount || '0'),
         0,
     );
 }
@@ -73,11 +76,11 @@ export function remainingPayment(transaction: RecentTransaction): number {
 type BadgeColor = 'default' | 'green' | 'amber' | 'red' | 'blue';
 
 const BADGE_COLORS: Record<BadgeColor, { bg: string; text: string }> = {
-    default: { bg: 'var(--muted)',         text: 'var(--muted-foreground)' },
-    green:   { bg: 'hsl(142 76% 92%)',     text: 'hsl(142 76% 30%)' },
-    amber:   { bg: 'hsl(43 96% 92%)',      text: 'hsl(43 96% 30%)' },
-    red:     { bg: 'hsl(0 72% 94%)',       text: 'hsl(0 72% 40%)' },
-    blue:    { bg: 'hsl(214 100% 95%)',    text: 'hsl(214 100% 40%)' },
+    default: { bg: 'var(--muted)', text: 'var(--muted-foreground)' },
+    green: { bg: 'hsl(142 76% 92%)', text: 'hsl(142 76% 30%)' },
+    amber: { bg: 'hsl(43 96% 92%)', text: 'hsl(43 96% 30%)' },
+    red: { bg: 'hsl(0 72% 94%)', text: 'hsl(0 72% 40%)' },
+    blue: { bg: 'hsl(214 100% 95%)', text: 'hsl(214 100% 40%)' },
 };
 
 export function PosBadge({
@@ -181,18 +184,23 @@ export function SearchableSelect({
             return options;
         }
 
-        return options.filter((option) => (
-            option.label.toLowerCase().includes(keyword)
-            || option.description?.toLowerCase().includes(keyword)
-            || option.value.toLowerCase().includes(keyword)
-        ));
+        return options.filter(
+            (option) =>
+                option.label.toLowerCase().includes(keyword) ||
+                option.description?.toLowerCase().includes(keyword) ||
+                option.value.toLowerCase().includes(keyword),
+        );
     }, [options, query]);
 
     return (
         <div
             ref={rootRef}
             onBlur={(event) => {
-                if (!rootRef.current?.contains(event.relatedTarget as Node | null)) {
+                if (
+                    !rootRef.current?.contains(
+                        event.relatedTarget as Node | null,
+                    )
+                ) {
                     setOpen(false);
                 }
             }}
@@ -210,13 +218,24 @@ export function SearchableSelect({
                     gap: '8px',
                     textAlign: 'left',
                     cursor: disabled ? 'not-allowed' : 'pointer',
-                    color: selected ? 'var(--foreground)' : 'var(--muted-foreground)',
+                    color: selected
+                        ? 'var(--foreground)'
+                        : 'var(--muted-foreground)',
                 }}
             >
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span
+                    style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                    }}
+                >
                     {selected?.label ?? placeholder}
                 </span>
-                <ChevronDown size={15} style={{ flexShrink: 0, color: 'var(--muted-foreground)' }} />
+                <ChevronDown
+                    size={15}
+                    style={{ flexShrink: 0, color: 'var(--muted-foreground)' }}
+                />
             </button>
 
             {open && (
@@ -250,13 +269,30 @@ export function SearchableSelect({
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
                             placeholder={searchPlaceholder}
-                            style={{ ...inputStyle, minHeight: '34px', paddingLeft: '32px', fontSize: '12px' }}
+                            style={{
+                                ...inputStyle,
+                                minHeight: '34px',
+                                paddingLeft: '32px',
+                                fontSize: '12px',
+                            }}
                         />
                     </div>
 
-                    <div style={{ maxHeight: '190px', overflowY: 'auto', padding: '4px' }}>
+                    <div
+                        style={{
+                            maxHeight: '190px',
+                            overflowY: 'auto',
+                            padding: '4px',
+                        }}
+                    >
                         {filteredOptions.length === 0 ? (
-                            <div style={{ padding: '10px 12px', color: 'var(--muted-foreground)', fontSize: '12px' }}>
+                            <div
+                                style={{
+                                    padding: '10px 12px',
+                                    color: 'var(--muted-foreground)',
+                                    fontSize: '12px',
+                                }}
+                            >
                                 {emptyText}
                             </div>
                         ) : (
@@ -264,7 +300,9 @@ export function SearchableSelect({
                                 <button
                                     key={option.value}
                                     type="button"
-                                    onMouseDown={(event) => event.preventDefault()}
+                                    onMouseDown={(event) =>
+                                        event.preventDefault()
+                                    }
                                     onClick={() => {
                                         onChange(option.value);
                                         setQuery('');
@@ -274,7 +312,10 @@ export function SearchableSelect({
                                         width: '100%',
                                         border: 'none',
                                         borderRadius: '6px',
-                                        backgroundColor: option.value === value ? 'var(--muted)' : 'transparent',
+                                        backgroundColor:
+                                            option.value === value
+                                                ? 'var(--muted)'
+                                                : 'transparent',
                                         color: 'var(--foreground)',
                                         cursor: 'pointer',
                                         display: 'grid',
@@ -283,9 +324,21 @@ export function SearchableSelect({
                                         textAlign: 'left',
                                     }}
                                 >
-                                    <span style={{ fontSize: '13px', fontWeight: 700 }}>{option.label}</span>
+                                    <span
+                                        style={{
+                                            fontSize: '13px',
+                                            fontWeight: 700,
+                                        }}
+                                    >
+                                        {option.label}
+                                    </span>
                                     {option.description && (
-                                        <span style={{ color: 'var(--muted-foreground)', fontSize: '11px' }}>
+                                        <span
+                                            style={{
+                                                color: 'var(--muted-foreground)',
+                                                fontSize: '11px',
+                                            }}
+                                        >
                                             {option.description}
                                         </span>
                                     )}

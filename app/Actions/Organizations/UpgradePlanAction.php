@@ -20,7 +20,7 @@ class UpgradePlanAction
      * over quota because of its own upgrade/downgrade action.
      *
      * @throws StoreQuotaExceededException when the target plan's quota
-     *         is smaller than the organization's current store count.
+     *                                     is smaller than the organization's current store count.
      */
     public function execute(Organization $organization, Plan $plan): Subscription
     {

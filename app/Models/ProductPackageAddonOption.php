@@ -16,7 +16,7 @@ class ProductPackageAddonOption extends Model
 
     protected $casts = [
         'extra_charge' => 'decimal:2',
-        'sort_order'   => 'integer',
+        'sort_order' => 'integer',
     ];
 
     public function addonGroup(): BelongsTo

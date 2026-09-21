@@ -6,6 +6,7 @@ use App\Actions\Transaction\CreateTransactionRefundAction;
 use App\Models\Transaction;
 use App\Models\TransactionRefund;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class TransactionRefundController extends Controller
@@ -26,6 +27,8 @@ class TransactionRefundController extends Controller
 
         $eligibleTransactions = $team->transactions()
             ->where('status', Transaction::STATUS_COMPLETED)
+            ->whereIn('payment_status', [Transaction::PAYMENT_STATUS_PAID, Transaction::PAYMENT_STATUS_PARTIAL])
+            ->where('paid_amount', '>', 0)
             ->latest('created_at')
             ->limit(100)
             ->get(['id', 'invoice_number', 'customer_name', 'grand_total']);
@@ -77,6 +80,12 @@ class TransactionRefundController extends Controller
 
         abort_if(! $team, 403, 'Tidak ada tim aktif.');
         abort_unless($refund->team_id === $team->id, 404);
+
+        if ($refund->status === TransactionRefund::STATUS_APPROVED) {
+            throw ValidationException::withMessages([
+                'refund' => 'Refund yang sudah disetujui tidak dapat dihapus.',
+            ]);
+        }
 
         $refund->delete();
 

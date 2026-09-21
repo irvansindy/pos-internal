@@ -49,6 +49,28 @@ class Plan extends Model
     }
 
     /**
+     * Registration must remain usable on a freshly migrated database even
+     * when deployment has not run the optional seeders yet.
+     */
+    public static function defaultBasic(): self
+    {
+        return static::query()->firstOrCreate(
+            ['code' => PlanCode::Basic->value],
+            [
+                'name' => PlanCode::Basic->label(),
+                'max_stores' => 1,
+                'max_owners' => 1,
+                'price_monthly' => 150_000,
+                'price_yearly' => 1_500_000,
+                'is_custom' => false,
+                'is_active' => true,
+                'sort_order' => 1,
+                'features' => [],
+            ],
+        );
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

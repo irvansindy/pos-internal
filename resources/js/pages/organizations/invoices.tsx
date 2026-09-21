@@ -11,7 +11,10 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { download as downloadInvoices, pdf as invoicePdf } from '@/routes/organizations/invoices';
+import {
+    download as downloadInvoices,
+    pdf as invoicePdf,
+} from '@/routes/organizations/invoices';
 import type { OrganizationInvoice, OrganizationInvoiceStatus } from '@/types';
 
 type Props = {
@@ -59,7 +62,7 @@ export default function OrganizationInvoices({ invoices }: Props) {
 
                     {invoices.length > 0 ? (
                         <Button variant="outline" size="sm" asChild>
-                            <a href={downloadInvoices()}>
+                            <a href={downloadInvoices().url}>
                                 <Download className="h-4 w-4" />
                                 Export CSV
                             </a>
@@ -125,9 +128,11 @@ export default function OrganizationInvoices({ invoices }: Props) {
                                                 data-test={`invoice-pdf-${invoice.orderId}`}
                                             >
                                                 <a
-                                                    href={invoicePdf(
-                                                        invoice.orderId,
-                                                    )}
+                                                    href={
+                                                        invoicePdf(
+                                                            invoice.orderId,
+                                                        ).url
+                                                    }
                                                 >
                                                     <FileText className="h-4 w-4" />
                                                 </a>

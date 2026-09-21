@@ -3,7 +3,8 @@ import type { PosItem } from '@/types/pos';
 
 export function useProductSearch(teamSlug: string, initialProducts: PosItem[]) {
     const [search, setSearch] = useState('');
-    const [serverResults, setServerResults] = useState<PosItem[]>(initialProducts);
+    const [serverResults, setServerResults] =
+        useState<PosItem[]>(initialProducts);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -11,17 +12,28 @@ export function useProductSearch(teamSlug: string, initialProducts: PosItem[]) {
 
         const timeout = window.setTimeout(() => {
             setLoading(true);
-            fetch(`/${teamSlug}/pos/products/search?search=${encodeURIComponent(search)}`, {
-                headers: { Accept: 'application/json' },
-                signal: controller.signal,
-            })
+            fetch(
+                `/${teamSlug}/pos/products/search?search=${encodeURIComponent(search)}`,
+                {
+                    headers: { Accept: 'application/json' },
+                    signal: controller.signal,
+                },
+            )
                 .then((r) => {
-                    if (!r.ok) throw new Error('Search failed');
+                    if (!r.ok) {
+                        throw new Error('Search failed');
+                    }
+
                     return r.json() as Promise<{ products: PosItem[] }>;
                 })
                 .then((data) => setServerResults(data.products))
                 .catch((err: unknown) => {
-                    if (err instanceof DOMException && err.name === 'AbortError') return;
+                    if (
+                        err instanceof DOMException &&
+                        err.name === 'AbortError'
+                    ) {
+                        return;
+                    }
                 })
                 .finally(() => setLoading(false));
         }, 280);
@@ -35,7 +47,10 @@ export function useProductSearch(teamSlug: string, initialProducts: PosItem[]) {
     // Client-side fuzzy filter on top of server results
     const filteredProducts = useMemo(() => {
         const keyword = search.trim().toLowerCase();
-        if (!keyword) return serverResults;
+
+        if (!keyword) {
+            return serverResults;
+        }
 
         return serverResults.filter(
             (p) =>

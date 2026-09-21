@@ -4,6 +4,7 @@ namespace App\Http\Responses;
 
 use App\Enums\TeamRole;
 use App\Models\Team;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
@@ -34,7 +35,7 @@ class LoginResponse implements LoginResponseContract
         // Cek apakah ada intended URL yang valid
         $intended = $request->hasSession() ? session()->pull('url.intended') : null;
 
-        if ($intended && str_contains($intended, '/' . $team->slug . '/')) {
+        if ($intended && str_contains($intended, '/'.$team->slug.'/')) {
             return redirect($intended);
         }
 
@@ -47,7 +48,7 @@ class LoginResponse implements LoginResponseContract
      * 2. Team pertama yang dimiliki dari DB
      * 3. Buat personal team baru
      */
-    private function resolveTeam(\App\Models\User $user): Team
+    private function resolveTeam(User $user): Team
     {
         // Cek current_team_id langsung
         if ($user->current_team_id) {
@@ -85,17 +86,17 @@ class LoginResponse implements LoginResponseContract
      * Buat personal team baru untuk user.
      * Pakai DB::insert langsung agar tidak ada issue dengan Pivot model.
      */
-    private function createPersonalTeam(\App\Models\User $user): Team
+    private function createPersonalTeam(User $user): Team
     {
         $team = Team::create([
-            'name'        => $user->name . "'s Team",
+            'name' => $user->name."'s Team",
             'is_personal' => true,
         ]);
 
         DB::table('team_members')->insert([
-            'team_id'    => $team->id,
-            'user_id'    => $user->id,
-            'role'       => TeamRole::Owner->value,
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'role' => TeamRole::Owner->value,
             'created_at' => now(),
             'updated_at' => now(),
         ]);

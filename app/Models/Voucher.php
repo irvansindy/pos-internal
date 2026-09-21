@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Voucher extends Model
 {
     public const TYPE_FIXED = 'fixed';
+
     public const TYPE_PERCENT = 'percent';
 
     protected $fillable = [

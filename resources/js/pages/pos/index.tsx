@@ -1,9 +1,18 @@
-import { Head, router } from '@inertiajs/react';
-import { Receipt } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { Banknote, Receipt } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/use-cart';
 import { useProductSearch } from '@/hooks/use-product-search';
-import type { AppliedVoucher, AvailableVoucher, PaymentMethod, PosItem, RecentTransaction } from '@/types/pos';
+import type {
+    AppliedVoucher,
+    AvailableVoucher,
+    PaymentMethod,
+    PosCustomer,
+    PosDiningTable,
+    PosItem,
+    RecentTransaction,
+} from '@/types/pos';
 import { CartPanel } from './components/cart-panel';
 import { ProductGrid } from './components/product-grid';
 import { RecentTransactions } from './components/recent-transactions';
@@ -18,36 +27,74 @@ interface Props {
     canApplyVoucher: boolean;
     taxRate: number;
     canVoid: boolean;
+    customers: PosCustomer[];
+    diningTables: PosDiningTable[];
+    loyaltyPointValue: number;
+    activeCashierShift: { id: number; opened_at: string } | null;
+    canManageCashierShift: boolean;
 }
 
-export default function PosIndex({ products, recentTransactions, vouchers, teamSlug, paymentMethods, canApplyVoucher, taxRate, canVoid }: Props) {
+export default function PosIndex({
+    products,
+    recentTransactions,
+    vouchers,
+    teamSlug,
+    paymentMethods,
+    canApplyVoucher,
+    taxRate,
+    canVoid,
+    customers,
+    diningTables,
+    loyaltyPointValue,
+    activeCashierShift,
+    canManageCashierShift,
+}: Props) {
     const defaultPaymentMethod = paymentMethods[0]?.value ?? 'cash';
 
     // ── Hooks ──────────────────────────────────────────────────────────────────
-    const { cart, subtotal, addToCart, setQuantity, removeFromCart, clearCart } = useCart();
-    const { search, setSearch, filteredProducts, loading } = useProductSearch(teamSlug, products);
+    const {
+        cart,
+        subtotal,
+        addToCart,
+        setQuantity,
+        removeFromCart,
+        clearCart,
+    } = useCart();
+    const { search, setSearch, filteredProducts, loading } = useProductSearch(
+        teamSlug,
+        products,
+    );
 
     // ── Checkout form state ────────────────────────────────────────────────────
-    const [customerName,   setCustomerName]   = useState('');
-    const [voucherCode,    setVoucherCode]     = useState('');
-    const [paymentMethod,  setPaymentMethod]   = useState(defaultPaymentMethod);
-    const [paidAmount,     setPaidAmount]      = useState('');
-    const [note,           setNote]            = useState('');
-    const [processing,     setProcessing]      = useState(false);
-    const [errors,         setErrors]          = useState<Record<string, string>>({});
-    const [appliedVoucher, setAppliedVoucher]  = useState<AppliedVoucher | null>(null);
-    const [voucherMessage, setVoucherMessage]  = useState<string | null>(null);
+    const [customerName, setCustomerName] = useState('');
+    const [customerId, setCustomerId] = useState('');
+    const [diningTableId, setDiningTableId] = useState('');
+    const [pointsToRedeem, setPointsToRedeem] = useState('0');
+    const [voucherCode, setVoucherCode] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState(defaultPaymentMethod);
+    const [paidAmount, setPaidAmount] = useState('');
+    const [note, setNote] = useState('');
+    const [processing, setProcessing] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [appliedVoucher, setAppliedVoucher] = useState<AppliedVoucher | null>(
+        null,
+    );
+    const [voucherMessage, setVoucherMessage] = useState<string | null>(null);
     const [voucherChecking, setVoucherChecking] = useState(false);
-    const [availablePromotions, setAvailablePromotions] = useState<(PosItem & { suggested_quantity: number })[]>([]);
+    const [availablePromotions, setAvailablePromotions] = useState<
+        (PosItem & { suggested_quantity: number })[]
+    >([]);
+    const [customerOptions, setCustomerOptions] = useState(customers);
 
-    const activeVoucher = voucherCode.trim() !== ''
-        && subtotal > 0
-        && cart.length > 0
-        && appliedVoucher?.code === voucherCode.trim()
-        ? appliedVoucher
-        : null;
-    const activeVoucherMessage = voucherCode.trim() !== '' && !activeVoucher ? voucherMessage : null;
-    const discountTotal = activeVoucher?.discount_total ?? 0;
+    const activeVoucher =
+        voucherCode.trim() !== '' &&
+        subtotal > 0 &&
+        cart.length > 0 &&
+        appliedVoucher?.code === voucherCode.trim()
+            ? appliedVoucher
+            : null;
+    const activeVoucherMessage =
+        voucherCode.trim() !== '' && !activeVoucher ? voucherMessage : null;
 
     useEffect(() => {
         if (!canApplyVoucher) {
@@ -77,10 +124,14 @@ export default function PosIndex({ products, recentTransactions, vouchers, teamS
                 signal: controller.signal,
             })
                 .then(async (response) => {
-                    const data = (await response.json()) as ValidateVoucherResponse;
+                    const data =
+                        (await response.json()) as ValidateVoucherResponse;
 
                     if (!response.ok || !data.valid) {
-                        throw new Error(data.message ?? 'Voucher tidak valid atau tidak memenuhi syarat transaksi.');
+                        throw new Error(
+                            data.message ??
+                                'Voucher tidak valid atau tidak memenuhi syarat transaksi.',
+                        );
                     }
 
                     setAppliedVoucher({
@@ -90,12 +141,19 @@ export default function PosIndex({ products, recentTransactions, vouchers, teamS
                     setVoucherMessage(data.message ?? null);
                 })
                 .catch((error: unknown) => {
-                    if (error instanceof DOMException && error.name === 'AbortError') {
+                    if (
+                        error instanceof DOMException &&
+                        error.name === 'AbortError'
+                    ) {
                         return;
                     }
 
                     setAppliedVoucher(null);
-                    setVoucherMessage(error instanceof Error ? error.message : 'Voucher tidak valid.');
+                    setVoucherMessage(
+                        error instanceof Error
+                            ? error.message
+                            : 'Voucher tidak valid.',
+                    );
                 })
                 .finally(() => setVoucherChecking(false));
         }, 320);
@@ -110,13 +168,14 @@ export default function PosIndex({ products, recentTransactions, vouchers, teamS
     // perlu tahu/mencari nama promosinya secara manual lagi.
     const cartProductLines = cart
         .filter((item) => item.product.item_type === 'product')
-        .map((item) => ({ product_id: item.product.item_id, quantity: item.quantity }));
+        .map((item) => ({
+            product_id: item.product.item_id,
+            quantity: item.quantity,
+        }));
     const cartProductLinesKey = JSON.stringify(cartProductLines);
 
     useEffect(() => {
         if (cartProductLines.length === 0) {
-            setAvailablePromotions([]);
-
             return;
         }
 
@@ -135,13 +194,19 @@ export default function PosIndex({ products, recentTransactions, vouchers, teamS
                 signal: controller.signal,
             })
                 .then(async (response) => {
-                    if (!response.ok) return;
+                    if (!response.ok) {
+                        return;
+                    }
 
-                    const data = (await response.json()) as EvaluatePromotionsResponse;
+                    const data =
+                        (await response.json()) as EvaluatePromotionsResponse;
                     setAvailablePromotions(data.promotions ?? []);
                 })
                 .catch((error: unknown) => {
-                    if (error instanceof DOMException && error.name === 'AbortError') {
+                    if (
+                        error instanceof DOMException &&
+                        error.name === 'AbortError'
+                    ) {
                         return;
                     }
                 });
@@ -154,9 +219,62 @@ export default function PosIndex({ products, recentTransactions, vouchers, teamS
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cartProductLinesKey, teamSlug]);
 
-    function applyPromotion(promotion: PosItem & { suggested_quantity: number }) {
+    function applyPromotion(
+        promotion: PosItem & { suggested_quantity: number },
+    ) {
         addToCart(promotion);
         setQuantity(promotion, promotion.suggested_quantity);
+    }
+
+    async function createCustomer() {
+        const name = window.prompt('Nama pelanggan:');
+
+        if (!name) {
+            return;
+        }
+
+        const phone = window.prompt('Nomor HP pelanggan:');
+
+        if (!phone) {
+            return;
+        }
+
+        const email = window.prompt('Email pelanggan (opsional):') ?? '';
+        const response = await fetch(`/${teamSlug}/customers`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
+            },
+            body: JSON.stringify({ name, phone, email: email || null }),
+        });
+        const data = (await response.json()) as {
+            customer?: PosCustomer;
+            message?: string;
+            errors?: Record<string, string[]>;
+        };
+
+        if (!response.ok || !data.customer) {
+            setErrors({
+                customer_id:
+                    data.message ??
+                    Object.values(data.errors ?? {})[0]?.[0] ??
+                    'Pelanggan gagal ditambahkan.',
+            });
+
+            return;
+        }
+
+        setCustomerOptions((current) =>
+            [...current, data.customer!].sort((a, b) =>
+                a.name.localeCompare(b.name),
+            ),
+        );
+        setCustomerId(String(data.customer.id));
+        setCustomerName(data.customer.name);
     }
 
     // ── Validation ────────────────────────────────────────────────────────────
@@ -171,12 +289,22 @@ export default function PosIndex({ products, recentTransactions, vouchers, teamS
             return 'Metode pembayaran wajib dipilih.';
         }
 
-        if (!paidAmount.trim()) {
+        if (!paidAmount.trim() && !diningTableId) {
             return 'Jumlah bayar wajib diisi.';
         }
 
-        if (!Number.isFinite(paid) || paid <= 0) {
-            return 'Jumlah bayar wajib lebih dari 0.';
+        if (
+            !Number.isFinite(paid) ||
+            paid < 0 ||
+            (paid === 0 && !diningTableId)
+        ) {
+            return diningTableId
+                ? 'Jumlah bayar tidak boleh negatif.'
+                : 'Jumlah bayar wajib lebih dari 0.';
+        }
+
+        if (paid > 0 && !activeCashierShift) {
+            return 'Buka shift kasir sebelum menerima pembayaran.';
         }
 
         return null;
@@ -198,15 +326,18 @@ export default function PosIndex({ products, recentTransactions, vouchers, teamS
         router.post(
             `/${teamSlug}/pos/transaction`,
             {
-                customer_name:  customerName  || null,
-                voucher_code:   voucherCode   || null,
+                customer_name: customerName || null,
+                customer_id: customerId || null,
+                dining_table_id: diningTableId || null,
+                points_to_redeem: Number(pointsToRedeem || 0),
+                voucher_code: voucherCode || null,
                 payment_method: paymentMethod,
-                paid_amount:    String(parseNumberInput(paidAmount)),
-                note:           note          || null,
+                paid_amount: String(parseNumberInput(paidAmount)),
+                note: note || null,
                 items: cart.map((item) => ({
                     item_type: item.product.item_type,
-                    item_id:   item.product.item_id,
-                    quantity:  item.quantity,
+                    item_id: item.product.item_id,
+                    quantity: item.quantity,
                 })),
             },
             {
@@ -214,14 +345,17 @@ export default function PosIndex({ products, recentTransactions, vouchers, teamS
                 onSuccess: () => {
                     clearCart();
                     setCustomerName('');
+                    setCustomerId('');
+                    setDiningTableId('');
+                    setPointsToRedeem('0');
                     setVoucherCode('');
                     setAppliedVoucher(null);
                     setVoucherMessage(null);
                     setPaidAmount('');
                     setNote('');
                 },
-                onError:  (e) => setErrors(e),
-                onFinish: ()  => setProcessing(false),
+                onError: (e) => setErrors(e),
+                onFinish: () => setProcessing(false),
             },
         );
     }
@@ -230,34 +364,88 @@ export default function PosIndex({ products, recentTransactions, vouchers, teamS
         <>
             <Head title="POS Kasir" />
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '20px',
+                }}
+            >
                 {/* Page header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 style={{ margin: '0 0 4px', color: 'var(--foreground)', fontSize: '24px', fontWeight: 800 }}>
+                        <h1
+                            style={{
+                                margin: '0 0 4px',
+                                color: 'var(--foreground)',
+                                fontSize: '24px',
+                                fontWeight: 800,
+                            }}
+                        >
                             POS Kasir
                         </h1>
-                        <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: '13px' }}>
-                            Buat transaksi penjualan dan stok produk otomatis berkurang.
+                        <p
+                            style={{
+                                margin: 0,
+                                color: 'var(--muted-foreground)',
+                                fontSize: '13px',
+                            }}
+                        >
+                            Buat transaksi penjualan dan stok produk otomatis
+                            berkurang.
                         </p>
                     </div>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--muted-foreground)', fontSize: '13px' }}>
+                    <div
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            color: 'var(--muted-foreground)',
+                            fontSize: '13px',
+                        }}
+                    >
                         <Receipt size={16} />
                         {cart.length} item
                     </div>
                 </div>
 
+                {!activeCashierShift && (
+                    <div className="flex flex-col gap-3 rounded-md border border-amber-700/40 bg-amber-50 p-4 text-amber-950 sm:flex-row sm:items-center sm:justify-between dark:border-amber-400/40 dark:bg-amber-950/40 dark:text-amber-100">
+                        <div>
+                            <p className="font-medium">
+                                Shift kasir belum dibuka
+                            </p>
+                            <p className="mt-1 text-sm">
+                                {canManageCashierShift
+                                    ? 'Pesanan meja tanpa pembayaran tetap dapat dibuat. Buka shift sebelum menerima uang.'
+                                    : 'Pesanan meja tanpa pembayaran tetap dapat dibuat. Hubungi admin untuk menerima pembayaran.'}
+                            </p>
+                        </div>
+                        {canManageCashierShift && (
+                            <Button
+                                asChild
+                                variant="outline"
+                                className="h-11 shrink-0 border-current"
+                            >
+                                <Link href={`/${teamSlug}/cashier-operations`}>
+                                    <Banknote aria-hidden="true" />
+                                    Buka Shift
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
+                )}
+
                 {/* Main two-column layout */}
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'minmax(0, 1fr) 420px',
-                        gap: '20px',
-                        alignItems: 'start',
-                    }}
-                >
+                <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
                     {/* Left: product catalogue + recent transactions */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '16px',
+                        }}
+                    >
                         <ProductGrid
                             search={search}
                             onSearchChange={setSearch}
@@ -285,9 +473,19 @@ export default function PosIndex({ products, recentTransactions, vouchers, teamS
                         appliedVoucher={activeVoucher}
                         voucherMessage={activeVoucherMessage}
                         voucherChecking={voucherChecking}
-                        availablePromotions={availablePromotions}
+                        availablePromotions={
+                            cartProductLines.length === 0
+                                ? []
+                                : availablePromotions
+                        }
                         onApplyPromotion={applyPromotion}
                         customerName={customerName}
+                        customers={customerOptions}
+                        customerId={customerId}
+                        diningTables={diningTables}
+                        diningTableId={diningTableId}
+                        pointsToRedeem={pointsToRedeem}
+                        loyaltyPointValue={loyaltyPointValue}
                         voucherCode={voucherCode}
                         paymentMethod={paymentMethod}
                         paidAmount={paidAmount}
@@ -298,18 +496,35 @@ export default function PosIndex({ products, recentTransactions, vouchers, teamS
                         onRemoveItem={removeFromCart}
                         onClearCart={clearCart}
                         onSetCustomerName={setCustomerName}
+                        onSetCustomerId={(value) => {
+                            setCustomerId(value);
+                            const customer = customerOptions.find(
+                                (row) => String(row.id) === value,
+                            );
+
+                            if (customer) {
+                                setCustomerName(customer.name);
+                            }
+
+                            setPointsToRedeem('0');
+                        }}
+                        onCreateCustomer={createCustomer}
+                        onSetDiningTableId={setDiningTableId}
+                        onSetPointsToRedeem={setPointsToRedeem}
                         onSetVoucherCode={(value) => {
                             setVoucherCode(value);
                             setVoucherMessage(null);
                         }}
                         onSetPaymentMethod={setPaymentMethod}
                         onSetPaidAmount={setPaidAmount}
-                        onClearPaidAmountError={() => setErrors((e) => {
-                            const n = { ...e };
-                            delete n.paid_amount;
+                        onClearPaidAmountError={() =>
+                            setErrors((e) => {
+                                const n = { ...e };
+                                delete n.paid_amount;
 
-                            return n;
-                        })}
+                                return n;
+                            })
+                        }
                         onSetNote={setNote}
                         onSubmit={submitTransaction}
                     />

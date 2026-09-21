@@ -23,6 +23,13 @@ class UserSeeder extends Seeder
         'product-package.delete',
     ];
 
+    private const PROMOTION_PERMISSIONS = [
+        'product-promotion.view',
+        'product-promotion.create',
+        'product-promotion.update',
+        'product-promotion.delete',
+    ];
+
     public function run(): void
     {
         app()['cache']->forget('spatie.permission.cache');
@@ -31,12 +38,11 @@ class UserSeeder extends Seeder
         $developer = User::firstOrCreate(
             ['email' => 'developer@pos.test'],
             [
-                'name'               => 'Developer',
-                'password'           => Hash::make('password'),
-                'email_verified_at'  => now(),
+                'name' => 'Developer',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
             ]
         );
-
         // Developer mendapat semua setting permission secara global (team_id = null)
         setPermissionsTeamId(null);
         $developerRole = Role::firstOrCreate(
@@ -52,14 +58,14 @@ class UserSeeder extends Seeder
         $owner = User::firstOrCreate(
             ['email' => 'owner@pos.test'],
             [
-                'name'               => 'Owner Toko',
-                'password'           => Hash::make('password'),
-                'email_verified_at'  => now(),
+                'name' => 'Owner Toko',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
             ]
         );
 
         $teamA = Team::firstOrCreate(['slug' => 'toko-utama'], [
-            'name'        => 'Toko Utama',
+            'name' => 'Toko Utama',
             'is_personal' => false,
         ]);
 
@@ -88,9 +94,14 @@ class UserSeeder extends Seeder
             'product.stock.view', 'product.stock.adjust',
             // Product Package (admin & owner)
             ...self::PACKAGE_PERMISSIONS,
+            ...self::PROMOTION_PERMISSIONS,
             // Transaction
             'transaction.view', 'transaction.create', 'transaction.update',
             'transaction.void', 'transaction.refund', 'transaction.return',
+            'cashier-shift.view', 'cashier-shift.open', 'cashier-shift.manage', 'cashier-shift.close', 'cashier-shift.view-all',
+            'customer.view', 'customer.create', 'customer.update',
+            'dining-table.view', 'dining-table.create', 'dining-table.update', 'dining-table.delete',
+            'inventory.view', 'inventory.manage',
             // Voucher
             'voucher.view', 'voucher.create', 'voucher.update', 'voucher.delete', 'voucher.apply',
             // Report
@@ -106,6 +117,9 @@ class UserSeeder extends Seeder
             'product.view',
             'product.stock.view',
             'transaction.view', 'transaction.create', 'transaction.void', 'transaction.refund',
+            'cashier-shift.view', 'cashier-shift.open', 'cashier-shift.manage', 'cashier-shift.close',
+            'customer.view', 'customer.create', 'customer.update',
+            'dining-table.view',
             'voucher.view', 'voucher.apply',
             'report.sales', 'report.cashier',
         ]);
@@ -118,14 +132,16 @@ class UserSeeder extends Seeder
         $waiterRole->syncPermissions([
             'product.view',
             'transaction.view', 'transaction.create',
+            'customer.view', 'customer.create',
+            'dining-table.view',
         ]);
 
         // ── 4. STAFF USERS ───────────────────────────────────
         $admin = User::firstOrCreate(
             ['email' => 'admin@pos.test'],
             [
-                'name'              => 'Admin Toko',
-                'password'          => Hash::make('password'),
+                'name' => 'Admin Toko',
+                'password' => Hash::make('password'),
                 'email_verified_at' => now(),
             ]
         );
@@ -136,8 +152,8 @@ class UserSeeder extends Seeder
         $kasir = User::firstOrCreate(
             ['email' => 'kasir@pos.test'],
             [
-                'name'              => 'Kasir Satu',
-                'password'          => Hash::make('password'),
+                'name' => 'Kasir Satu',
+                'password' => Hash::make('password'),
                 'email_verified_at' => now(),
             ]
         );
@@ -148,8 +164,8 @@ class UserSeeder extends Seeder
         $waiter = User::firstOrCreate(
             ['email' => 'waiter@pos.test'],
             [
-                'name'              => 'Waiter Satu',
-                'password'          => Hash::make('password'),
+                'name' => 'Waiter Satu',
+                'password' => Hash::make('password'),
                 'email_verified_at' => now(),
             ]
         );
@@ -159,7 +175,7 @@ class UserSeeder extends Seeder
 
         // ── 5. TEAM B (second tenant) ────────────────────────
         $teamB = Team::firstOrCreate(['slug' => 'cabang-dua'], [
-            'name'        => 'Cabang Dua',
+            'name' => 'Cabang Dua',
             'is_personal' => false,
         ]);
         $teamB->members()->syncWithoutDetaching([
@@ -182,8 +198,13 @@ class UserSeeder extends Seeder
             'product.stock.view', 'product.stock.adjust',
             // Product Package (admin & owner)
             ...self::PACKAGE_PERMISSIONS,
+            ...self::PROMOTION_PERMISSIONS,
             // Transaction
             'transaction.view', 'transaction.create', 'transaction.refund',
+            'cashier-shift.view', 'cashier-shift.open', 'cashier-shift.manage', 'cashier-shift.close', 'cashier-shift.view-all',
+            'customer.view', 'customer.create', 'customer.update',
+            'dining-table.view', 'dining-table.create', 'dining-table.update', 'dining-table.delete',
+            'inventory.view', 'inventory.manage',
             // Voucher
             'voucher.view', 'voucher.apply',
             // Report

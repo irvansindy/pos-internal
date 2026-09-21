@@ -26,9 +26,9 @@ class StoreRoleRequest extends FormRequest
                     ->where('team_id', $team->id)
                     ->where('guard_name', 'web'),
             ],
-            'label'         => ['required', 'string', 'max:100'],
-            'description'   => ['nullable', 'string', 'max:255'],
-            'permissions'   => ['array'],
+            'label' => ['required', 'string', 'max:100'],
+            'description' => ['nullable', 'string', 'max:255'],
+            'permissions' => ['array'],
             'permissions.*' => [
                 'string',
                 Rule::exists('permissions', 'name')->where('guard_name', 'web'),
@@ -39,12 +39,12 @@ class StoreRoleRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required'      => 'Nama role wajib diisi.',
-            'name.regex'         => 'Nama role hanya boleh huruf kecil, angka, dan underscore.',
-            'name.unique'        => 'Role dengan nama ini sudah ada di tim ini.',
-            'label.required'     => 'Label role wajib diisi.',
-            'permissions.array'  => 'Format permission tidak valid.',
-            'permissions.*.exists'  => 'Permission tidak ditemukan.',
+            'name.required' => 'Nama role wajib diisi.',
+            'name.regex' => 'Nama role hanya boleh huruf kecil, angka, dan underscore.',
+            'name.unique' => 'Role dengan nama ini sudah ada di tim ini.',
+            'label.required' => 'Label role wajib diisi.',
+            'permissions.array' => 'Format permission tidak valid.',
+            'permissions.*.exists' => 'Permission tidak ditemukan.',
         ];
     }
 }

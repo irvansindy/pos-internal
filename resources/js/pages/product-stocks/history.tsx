@@ -67,12 +67,22 @@ function formatDate(value: string): string {
     }).format(new Date(value));
 }
 
-export default function ProductStockHistory({ product, movements, teamSlug }: Props) {
+export default function ProductStockHistory({
+    product,
+    movements,
+    teamSlug,
+}: Props) {
     return (
         <>
             <Head title={`Histori Stok ${product.name}`} />
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '20px',
+                }}
+            >
                 <Link
                     href={buildUrl('/product-stocks', teamSlug)}
                     style={{
@@ -89,11 +99,24 @@ export default function ProductStockHistory({ product, movements, teamSlug }: Pr
                 </Link>
 
                 <div>
-                    <h1 style={{ margin: '0 0 6px 0', color: 'var(--foreground)', fontSize: '28px' }}>
+                    <h1
+                        style={{
+                            margin: '0 0 6px 0',
+                            color: 'var(--foreground)',
+                            fontSize: '28px',
+                        }}
+                    >
                         Histori Stok
                     </h1>
-                    <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: '14px' }}>
-                        {product.name} ({product.sku}) saat ini {product.stock} unit
+                    <p
+                        style={{
+                            margin: 0,
+                            color: 'var(--muted-foreground)',
+                            fontSize: '14px',
+                        }}
+                    >
+                        {product.name} ({product.sku}) saat ini {product.stock}{' '}
+                        unit
                     </p>
                 </div>
 
@@ -105,10 +128,28 @@ export default function ProductStockHistory({ product, movements, teamSlug }: Pr
                         overflow: 'hidden',
                     }}
                 >
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <table
+                        style={{
+                            width: '100%',
+                            borderCollapse: 'collapse',
+                            fontSize: '13px',
+                        }}
+                    >
                         <thead>
-                            <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                {['Tanggal', 'Tipe', 'Jumlah', 'Sebelum', 'Sesudah', 'User', 'Catatan'].map((heading) => (
+                            <tr
+                                style={{
+                                    borderBottom: '1px solid var(--border)',
+                                }}
+                            >
+                                {[
+                                    'Tanggal',
+                                    'Tipe',
+                                    'Jumlah',
+                                    'Sebelum',
+                                    'Sesudah',
+                                    'User',
+                                    'Catatan',
+                                ].map((heading) => (
                                     <th
                                         key={heading}
                                         style={{
@@ -129,25 +170,64 @@ export default function ProductStockHistory({ product, movements, teamSlug }: Pr
                         <tbody>
                             {movements.data.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--muted-foreground)' }}>
+                                    <td
+                                        colSpan={7}
+                                        style={{
+                                            padding: '40px 16px',
+                                            textAlign: 'center',
+                                            color: 'var(--muted-foreground)',
+                                        }}
+                                    >
                                         Belum ada histori stok untuk produk ini
                                     </td>
                                 </tr>
                             ) : (
                                 movements.data.map((movement) => (
-                                    <tr key={movement.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                        <td style={{ padding: '12px 16px' }}>{formatDate(movement.created_at)}</td>
+                                    <tr
+                                        key={movement.id}
+                                        style={{
+                                            borderBottom:
+                                                '1px solid var(--border)',
+                                        }}
+                                    >
                                         <td style={{ padding: '12px 16px' }}>
-                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                            {formatDate(movement.created_at)}
+                                        </td>
+                                        <td style={{ padding: '12px 16px' }}>
+                                            <span
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                }}
+                                            >
                                                 {icon(movement.type)}
                                                 {label(movement.type)}
                                             </span>
                                         </td>
-                                        <td style={{ padding: '12px 16px' }}>{movement.quantity}</td>
-                                        <td style={{ padding: '12px 16px' }}>{movement.stock_before}</td>
-                                        <td style={{ padding: '12px 16px', fontWeight: 700 }}>{movement.stock_after}</td>
-                                        <td style={{ padding: '12px 16px' }}>{movement.user?.name ?? '-'}</td>
-                                        <td style={{ padding: '12px 16px', color: 'var(--muted-foreground)' }}>
+                                        <td style={{ padding: '12px 16px' }}>
+                                            {movement.quantity}
+                                        </td>
+                                        <td style={{ padding: '12px 16px' }}>
+                                            {movement.stock_before}
+                                        </td>
+                                        <td
+                                            style={{
+                                                padding: '12px 16px',
+                                                fontWeight: 700,
+                                            }}
+                                        >
+                                            {movement.stock_after}
+                                        </td>
+                                        <td style={{ padding: '12px 16px' }}>
+                                            {movement.user?.name ?? '-'}
+                                        </td>
+                                        <td
+                                            style={{
+                                                padding: '12px 16px',
+                                                color: 'var(--muted-foreground)',
+                                            }}
+                                        >
                                             {movement.note ?? '-'}
                                         </td>
                                     </tr>

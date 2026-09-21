@@ -32,7 +32,8 @@ test('an organization owner can submit a custom plan request', function () {
 test('approving a custom plan request switches the organization to the custom plan with the approved quota', function () {
     $this->seed(PlanSeeder::class);
 
-    $admin = User::factory()->create(['is_platform_admin' => true]);
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_platform_admin' => true])->save();
     $owner = User::factory()->create();
     $organization = $owner->currentOrganization;
 
@@ -60,10 +61,17 @@ test('approving a custom plan request switches the organization to the custom pl
     expect($subscription->status)->toBe(SubscriptionStatus::Active);
     expect($subscription->effectiveMaxStores())->toBe(12);
     expect($subscription->effectiveMaxOwners())->toBe(2);
+    $this->assertDatabaseHas('platform_admin_audits', [
+        'organization_id' => $organization->id,
+        'actor_id' => $admin->id,
+        'action' => 'custom_plan_request.approved',
+        'target_id' => $request->id,
+    ]);
 });
 
 test('approving a custom plan request refuses a quota smaller than the current store count', function () {
-    $admin = User::factory()->create(['is_platform_admin' => true]);
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_platform_admin' => true])->save();
     $owner = User::factory()->create();
     $organization = $owner->currentOrganization;
 
@@ -78,7 +86,8 @@ test('approving a custom plan request refuses a quota smaller than the current s
 });
 
 test('rejecting a custom plan request does not change the subscription', function () {
-    $admin = User::factory()->create(['is_platform_admin' => true]);
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_platform_admin' => true])->save();
     $owner = User::factory()->create();
     $organization = $owner->currentOrganization;
     $originalPlanId = $organization->currentSubscription()->plan_id;
@@ -89,6 +98,12 @@ test('rejecting a custom plan request does not change the subscription', functio
 
     expect($request->fresh()->status)->toBe(CustomPlanRequestStatus::Rejected);
     expect($organization->fresh()->currentSubscription()->plan_id)->toBe($originalPlanId);
+    $this->assertDatabaseHas('platform_admin_audits', [
+        'organization_id' => $organization->id,
+        'actor_id' => $admin->id,
+        'action' => 'custom_plan_request.rejected',
+        'target_id' => $request->id,
+    ]);
 });
 
 test('a non-admin cannot access the admin custom plan requests panel', function () {
@@ -100,7 +115,8 @@ test('a non-admin cannot access the admin custom plan requests panel', function 
 });
 
 test('a platform admin can view the admin custom plan requests panel', function () {
-    $admin = User::factory()->create(['is_platform_admin' => true]);
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_platform_admin' => true])->save();
 
     CustomPlanRequest::factory()->create();
 

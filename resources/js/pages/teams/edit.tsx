@@ -140,11 +140,10 @@ export default function TeamEdit({
                                                 placeholder="0"
                                             />
                                             <p className="text-sm text-muted-foreground">
-                                                Diterapkan otomatis ke
-                                                setiap transaksi POS di
-                                                toko ini. Kosongkan atau
-                                                isi 0 kalau toko tidak
-                                                mengenakan pajak.
+                                                Diterapkan otomatis ke setiap
+                                                transaksi POS di toko ini.
+                                                Kosongkan atau isi 0 kalau toko
+                                                tidak mengenakan pajak.
                                             </p>
                                             <InputError
                                                 message={errors.tax_rate}

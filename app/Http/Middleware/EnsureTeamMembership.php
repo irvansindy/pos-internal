@@ -29,14 +29,19 @@ class EnsureTeamMembership
             return redirect()->route('login');
         }
 
+        $routeTeam = $request->route('team');
         $teamSlug = $request->route('current_team');
 
-        if (! $teamSlug) {
+        if (! $teamSlug && ! $routeTeam instanceof Team) {
             return $this->redirectToUserTeam($user);
         }
 
-        // Query langsung ke DB — tidak pakai relasi cached
-        $team = Team::where('slug', $teamSlug)->whereNull('deleted_at')->first();
+        // Settings routes bind {team} directly, while business routes use
+        // the {current_team} slug prefix. Both must pass through the same
+        // membership/subscription checks without redirecting away first.
+        $team = $routeTeam instanceof Team
+            ? $routeTeam
+            : Team::where('slug', $teamSlug)->whereNull('deleted_at')->first();
 
         if (! $team) {
             return $this->redirectToUserTeam($user);
@@ -49,6 +54,10 @@ class EnsureTeamMembership
             ->exists();
 
         if (! $isMember) {
+            if ($routeTeam instanceof Team) {
+                abort(403, "Anda bukan anggota tim \"{$team->name}\".");
+            }
+
             return $this->redirectToUserTeam($user, "Anda bukan anggota tim \"{$team->name}\".");
         }
 
@@ -115,6 +124,7 @@ class EnsureTeamMembership
             $team = Team::find($membership->team_id);
             if ($team) {
                 $user->update(['current_team_id' => $team->id]);
+
                 return $this->buildRedirect($team, $error);
             }
         }
@@ -124,6 +134,7 @@ class EnsureTeamMembership
         // TIDAK PERNAH ada team baru yang lolos tanpa organization_id
         // (itu akan bikin quota enforcement bolong).
         $team = $this->createPersonalTeam($user);
+
         return $this->buildRedirect($team, $error);
     }
 
@@ -148,7 +159,7 @@ class EnsureTeamMembership
             ?? $this->createOrganization->execute(
                 user: $user,
                 name: $user->name."'s Organization",
-                plan: Plan::findByCode(PlanCode::Basic),
+                plan: Plan::findByCode(PlanCode::Basic) ?? Plan::defaultBasic(),
             );
 
         return $this->createTeam->handle(

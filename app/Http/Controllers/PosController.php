@@ -12,6 +12,7 @@ use App\Http\Requests\Pos\ProcessPaymentRequest;
 use App\Http\Requests\Pos\SearchProductsRequest;
 use App\Http\Requests\Pos\ValidateVoucherRequest;
 use App\Http\Requests\Pos\VoidTransactionRequest;
+use App\Models\CashierShift;
 use App\Models\Product;
 use App\Models\ProductPackage;
 use App\Models\ProductPromotion;
@@ -21,6 +22,7 @@ use App\Models\Voucher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -80,11 +82,18 @@ class PosController extends Controller
                 'voucher_id',
                 'invoice_number',
                 'customer_name',
+                'customer_phone',
+                'customer_email',
+                'customer_id',
+                'dining_table_id',
                 'status',
                 'payment_status',
                 'payment_method',
                 'subtotal',
                 'discount_total',
+                'points_redeemed',
+                'points_discount_total',
+                'tax_total',
                 'grand_total',
                 'paid_amount',
                 'change_amount',
@@ -123,7 +132,16 @@ class PosController extends Controller
             ],
             'canApplyVoucher' => $authUser->canOnCurrentTeam('voucher.apply'),
             'taxRate' => (float) $team->tax_rate,
-            'canVoid' => $authUser->ownsTeam($team),
+            'canVoid' => $authUser->canOnCurrentTeam('transaction.void'),
+            'customers' => $team->customers()->orderBy('name')->limit(100)->get(['id', 'name', 'phone', 'email', 'points_balance']),
+            'diningTables' => $team->diningTables()->orderBy('name')->get(['id', 'name', 'capacity', 'status']),
+            'loyaltyPointValue' => (int) config('loyalty.point_value'),
+            'activeCashierShift' => CashierShift::query()
+                ->where('team_id', $team->id)
+                ->where('user_id', $authUser->id)
+                ->where('status', CashierShift::STATUS_OPEN)
+                ->first(['id', 'opened_at']),
+            'canManageCashierShift' => $authUser->canOnCurrentTeam('cashier-shift.open'),
         ]);
     }
 
@@ -236,6 +254,10 @@ class PosController extends Controller
 
         setPermissionsTeamId($team->id);
 
+        if ((float) $request->validated('paid_amount') > 0) {
+            $this->requireActiveCashierShift($team->id, $authUser->id);
+        }
+
         $transaction = $this->createPosTransactionAction->execute($team, $authUser, $request->validated());
 
         Inertia::flash('success', "Transaksi {$transaction->invoice_number} berhasil dibuat.");
@@ -250,7 +272,9 @@ class PosController extends Controller
             ->where('id', $request->route('transaction'))
             ->firstOrFail();
 
-        $this->processTransactionPaymentAction->execute($team, $transaction, $request->validated());
+        $this->requireActiveCashierShift($team->id, $request->user()->id);
+
+        $this->processTransactionPaymentAction->execute($team, $transaction, $request->validated(), $request->user());
 
         Inertia::flash('success', "Pembayaran {$transaction->invoice_number} berhasil diperbarui.");
 
@@ -262,7 +286,7 @@ class PosController extends Controller
         $team = $request->user()->currentTeam;
         $authUser = $request->user();
 
-        abort_unless($authUser->ownsTeam($team), 403, 'Hanya owner yang dapat membatalkan transaksi.');
+        abort_unless($authUser->canOnCurrentTeam('transaction.void'), 403, 'Anda tidak memiliki izin untuk membatalkan transaksi.');
 
         $transaction = $this->voidTransactionAction->execute(
             $team,
@@ -288,6 +312,23 @@ class PosController extends Controller
                 ['name', 'asc'],
             ])
             ->values();
+    }
+
+    private function requireActiveCashierShift(int $teamId, int $userId): CashierShift
+    {
+        $shift = CashierShift::query()
+            ->where('team_id', $teamId)
+            ->where('user_id', $userId)
+            ->where('status', CashierShift::STATUS_OPEN)
+            ->first();
+
+        if (! $shift) {
+            throw ValidationException::withMessages([
+                'cashier_shift' => 'Buka shift kasir sebelum menerima pembayaran.',
+            ]);
+        }
+
+        return $shift;
     }
 
     private function formatProductForPos(Product $product): array

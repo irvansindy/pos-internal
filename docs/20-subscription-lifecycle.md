@@ -51,7 +51,9 @@ Keduanya diperbaiki di sprint ini:
 
 ## Notifikasi Email
 
-Semua notification class ada di `app/Notifications/Organizations/`, pakai `ShouldQueue` (butuh queue worker jalan — `QUEUE_CONNECTION=database` sudah default dari awal project ini, jalankan `php artisan queue:work`):
+Semua notification class ada di `app/Notifications/Organizations/` dan memakai
+`ShouldQueue`. Docker Compose menjalankan worker melalui service `queue`. Untuk
+proses lokal tanpa Docker, jalankan `php artisan queue:work`.
 
 | Notification | Dikirim ke | Kapan |
 |---|---|---|

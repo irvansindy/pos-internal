@@ -59,13 +59,13 @@ Ditambahkan di Sprint 2:
 - `CreateNewUser` (Fortify) dan `RegisterResponse` diwire supaya **setiap user baru otomatis dapat Organization** (plan Basic, trial 14 hari) sebelum toko pertamanya dibuat — tanpa ini, quota enforcement di atas akan mem-block semua user baru karena `currentOrganization` mereka `null`.
 - `UserFactory` diupdate supaya setiap `User::factory()->create()` juga otomatis dapat Organization + Plan (quota longgar, `max_stores: 10`) + Subscription aktif, supaya seluruh test suite yang sudah ada tidak rusak oleh perubahan ini. Test yang secara spesifik menguji kuota membuat Organization/Plan/Subscription sendiri (lihat `tests/Feature/Organizations/StoreQuotaTest.php`), tidak bergantung pada default factory ini.
 - `OrganizationController@stores` — halaman **"Toko Saya"**: daftar toko di bawah organization user, progress bar kuota, dan kartu tiap paket (basic/premium/ultra/custom) untuk upgrade.
-- `OrganizationController@upgrade` + `UpgradePlanAction` — ganti plan organization secara self-service (**belum ada payment gateway** — itu Sprint 3). Menolak downgrade ke plan yang kuotanya lebih kecil dari jumlah toko yang sudah ada. Plan `custom` ditolak lewat self-service (harus lewat tim sales / admin, lihat `UpgradeOrganizationPlanRequest`).
-- Route baru: `GET/POST settings/organization/stores` dan `settings/organization/upgrade` (nama route: `organizations.stores`, `organizations.upgrade`), plus nav item "Billing" di `settings/layout.tsx`.
+- Upgrade paket berbayar memakai `POST settings/organization/checkout`. Paket baru hanya aktif setelah webhook Midtrans mengonfirmasi pembayaran.
+- Endpoint lama `POST settings/organization/upgrade` sudah dihapus pada Sprint Hardening karena dapat mengganti paket tanpa pembayaran. `UpgradePlanAction` tetap dipakai sebagai aturan domain internal dan tidak diekspos lewat route pengguna.
 
-### Yang MASIH belum ada (menunggu Sprint 3+)
+### Status lanjutan
 
-- Payment gateway (Midtrans/Xendit) — upgrade plan saat ini instan tanpa pembayaran, cocok untuk basic/premium/ultra versi awal tapi belum production-ready untuk billing sungguhan.
-- Downgrade plan dari UI (Action `UpgradePlanAction` sebenarnya sudah mendukung "downgrade" juga selama kuota muat, tapi UI kartu paket saat ini hanya expose "Pilih Paket" untuk plan yang belum aktif — belum ada halaman "cancel subscription").
+- Billing paket standar sudah memakai Midtrans Snap dan webhook bertanda tangan.
+- Downgrade dan pembatalan subscription dijelaskan di `docs/20-subscription-lifecycle.md` dan `docs/22-member-role-invoice-export-cancel.md`.
 - Multi-owner untuk plan custom (`max_owners` sudah ada di skema, tapi belum ada UI untuk invite owner kedua ke organization).
 - Notifikasi email saat trial mau habis / gagal bayar.
 - Halaman admin internal untuk approve/atur kuota custom plan secara manual.

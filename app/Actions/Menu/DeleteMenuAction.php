@@ -9,9 +9,6 @@ class DeleteMenuAction
 {
     /**
      * Delete menu and its children, and remove associated permissions.
-     *
-     * @param Menu $menu
-     * @return bool
      */
     public function execute(Menu $menu): bool
     {
@@ -22,7 +19,7 @@ class DeleteMenuAction
         // Get and delete permissions for this menu and all children
         $permissionNames = Menu::whereIn('id', $allIds)
             ->pluck('name')
-            ->map(fn ($name) => 'menu.' . $name)
+            ->map(fn ($name) => 'menu.'.$name)
             ->toArray();
 
         Permission::where('guard_name', 'web')
@@ -35,9 +32,6 @@ class DeleteMenuAction
 
     /**
      * Recursively get all child menu IDs.
-     *
-     * @param Menu $menu
-     * @return array
      */
     private function getChildMenuIds(Menu $menu): array
     {

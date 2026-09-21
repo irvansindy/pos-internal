@@ -20,7 +20,7 @@ class UpdateRoleAction
         setPermissionsTeamId($role->team_id ?? $team->id);
 
         $role->update([
-            'label'       => $label,
+            'label' => $label,
             'description' => $description,
         ]);
 

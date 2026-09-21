@@ -17,15 +17,15 @@ use Inertia\Response;
 class ProductPackageController extends Controller
 {
     public function __construct(
-        private readonly CreateProductPackageAction      $createAction,
-        private readonly UpdateProductPackageAction      $updateAction,
-        private readonly DeleteProductPackageAction      $deleteAction,
-        private readonly RecordProductActivityLogAction  $recordActivity,
+        private readonly CreateProductPackageAction $createAction,
+        private readonly UpdateProductPackageAction $updateAction,
+        private readonly DeleteProductPackageAction $deleteAction,
+        private readonly RecordProductActivityLogAction $recordActivity,
     ) {}
 
     public function index(Request $request): Response
     {
-        $team     = $request->user()->currentTeam;
+        $team = $request->user()->currentTeam;
         $authUser = $request->user();
 
         abort_unless($team->members()->where('users.id', $authUser->id)->exists(), 403);
@@ -55,20 +55,20 @@ class ProductPackageController extends Controller
             ->get(['id', 'name', 'sku', 'price']);
 
         return Inertia::render('product-packages/index', [
-            'packages'       => $packages,
+            'packages' => $packages,
             'recentActivity' => $recentActivity,
-            'categories'     => $categories,
-            'products'       => $products,
-            'teamSlug'       => $team->slug,
-            'canCreate'      => $authUser->canOnCurrentTeam('product-package.create'),
-            'canUpdate'      => $authUser->canOnCurrentTeam('product-package.update'),
-            'canDelete'      => $authUser->canOnCurrentTeam('product-package.delete'),
+            'categories' => $categories,
+            'products' => $products,
+            'teamSlug' => $team->slug,
+            'canCreate' => $authUser->canOnCurrentTeam('product-package.create'),
+            'canUpdate' => $authUser->canOnCurrentTeam('product-package.update'),
+            'canDelete' => $authUser->canOnCurrentTeam('product-package.delete'),
         ]);
     }
 
     public function store(CreateProductPackageRequest $request)
     {
-        $team     = $request->user()->currentTeam;
+        $team = $request->user()->currentTeam;
         $authUser = $request->user();
 
         abort_unless($team->members()->where('users.id', $authUser->id)->exists(), 403);
@@ -96,14 +96,14 @@ class ProductPackageController extends Controller
 
     public function update(UpdateProductPackageRequest $request)
     {
-        $team     = $request->user()->currentTeam;
+        $team = $request->user()->currentTeam;
         $authUser = $request->user();
 
         abort_unless($team->members()->where('users.id', $authUser->id)->exists(), 403);
         setPermissionsTeamId($team->id);
 
         $package = $this->resolvePackage($request);
-        $before  = $package->only($this->activityFields());
+        $before = $package->only($this->activityFields());
 
         $this->updateAction->execute($package, $request->validated());
         $package->refresh();
@@ -132,15 +132,15 @@ class ProductPackageController extends Controller
 
     public function destroy(Request $request)
     {
-        $team     = $request->user()->currentTeam;
+        $team = $request->user()->currentTeam;
         $authUser = $request->user();
 
         abort_unless($team->members()->where('users.id', $authUser->id)->exists(), 403);
         setPermissionsTeamId($team->id);
 
         $package = $this->resolvePackage($request);
-        $name    = $package->name;
-        $before  = $package->only($this->activityFields());
+        $name = $package->name;
+        $before = $package->only($this->activityFields());
 
         $this->recordActivity->execute(
             $team,
@@ -164,7 +164,7 @@ class ProductPackageController extends Controller
 
     public function show(Request $request): Response
     {
-        $team     = $request->user()->currentTeam;
+        $team = $request->user()->currentTeam;
         $authUser = $request->user();
 
         abort_unless($team->members()->where('users.id', $authUser->id)->exists(), 403);
@@ -174,8 +174,8 @@ class ProductPackageController extends Controller
             ->load(['category:id,name', 'items.product:id,name,sku,price', 'addonGroups.defaultProduct:id,name', 'addonGroups.options.product:id,name,price']);
 
         return Inertia::render('product-packages/show', [
-            'package'   => $package,
-            'teamSlug'  => $team->slug,
+            'package' => $package,
+            'teamSlug' => $team->slug,
             'canUpdate' => $authUser->canOnCurrentTeam('product-package.update'),
             'canDelete' => $authUser->canOnCurrentTeam('product-package.delete'),
         ]);
@@ -183,22 +183,22 @@ class ProductPackageController extends Controller
 
     public function history(Request $request): Response
     {
-        $team     = $request->user()->currentTeam;
+        $team = $request->user()->currentTeam;
         $authUser = $request->user();
 
         abort_unless($team->members()->where('users.id', $authUser->id)->exists(), 403);
         setPermissionsTeamId($team->id);
 
-        $package  = $this->resolvePackage($request);
+        $package = $this->resolvePackage($request);
         $activity = $package->activityLogs()
             ->with('user:id,name')
             ->latest()
             ->paginate(20);
 
         return Inertia::render('product-packages/history', [
-            'package'   => $package,
-            'activity'  => $activity,
-            'teamSlug'  => $team->slug,
+            'package' => $package,
+            'activity' => $activity,
+            'teamSlug' => $team->slug,
             'canUpdate' => $authUser->canOnCurrentTeam('product-package.update'),
             'canDelete' => $authUser->canOnCurrentTeam('product-package.delete'),
         ]);
@@ -231,7 +231,7 @@ class ProductPackageController extends Controller
             ->mapWithKeys(fn (string $key) => [
                 $key => [
                     'before' => $before[$key] ?? null,
-                    'after'  => $after[$key] ?? null,
+                    'after' => $after[$key] ?? null,
                 ],
             ])
             ->all();

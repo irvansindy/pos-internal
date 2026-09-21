@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class TransactionItem extends Model
 {
     public const ITEM_TYPE_PRODUCT = 'product';
+
     public const ITEM_TYPE_PACKAGE = 'package';
+
     public const ITEM_TYPE_PROMOTION = 'promotion';
 
     protected $fillable = [

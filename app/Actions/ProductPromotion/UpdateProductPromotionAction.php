@@ -3,6 +3,8 @@
 namespace App\Actions\ProductPromotion;
 
 use App\Models\ProductPromotion;
+use App\Models\Team;
+use App\Support\TeamCatalogReferenceGuard;
 use Illuminate\Support\Facades\DB;
 
 class UpdateProductPromotionAction
@@ -10,13 +12,18 @@ class UpdateProductPromotionAction
     public function execute(ProductPromotion $promotion, array $data): ProductPromotion
     {
         return DB::transaction(function () use ($promotion, $data) {
+            TeamCatalogReferenceGuard::ensure(Team::query()->findOrFail($promotion->team_id), [
+                ...collect($data['triggers'] ?? [])->pluck('product_id'),
+                ...collect($data['rewards'] ?? [])->pluck('product_id'),
+            ]);
+
             $promotion->update([
-                'name'        => $data['name']        ?? $promotion->name,
+                'name' => $data['name'] ?? $promotion->name,
                 'description' => $data['description'] ?? $promotion->description,
-                'type'        => $data['type']        ?? $promotion->type,
-                'is_active'   => $data['is_active']   ?? $promotion->is_active,
-                'starts_at'   => array_key_exists('starts_at', $data) ? $data['starts_at'] : $promotion->starts_at,
-                'ends_at'     => array_key_exists('ends_at', $data)   ? $data['ends_at']   : $promotion->ends_at,
+                'type' => $data['type'] ?? $promotion->type,
+                'is_active' => $data['is_active'] ?? $promotion->is_active,
+                'starts_at' => array_key_exists('starts_at', $data) ? $data['starts_at'] : $promotion->starts_at,
+                'ends_at' => array_key_exists('ends_at', $data) ? $data['ends_at'] : $promotion->ends_at,
             ]);
 
             if (array_key_exists('triggers', $data)) {
@@ -37,7 +44,7 @@ class UpdateProductPromotionAction
 
         foreach ($triggers as $trigger) {
             $promotion->triggers()->create([
-                'product_id'   => $trigger['product_id'],
+                'product_id' => $trigger['product_id'],
                 'min_quantity' => $trigger['min_quantity'],
             ]);
         }
@@ -49,8 +56,8 @@ class UpdateProductPromotionAction
 
         foreach ($rewards as $reward) {
             $promotion->rewards()->create([
-                'product_id'   => $reward['product_id'],
-                'quantity'     => $reward['quantity'],
+                'product_id' => $reward['product_id'],
+                'quantity' => $reward['quantity'],
                 'extra_charge' => $reward['extra_charge'] ?? 0,
             ]);
         }

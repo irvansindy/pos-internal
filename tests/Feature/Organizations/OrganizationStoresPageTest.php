@@ -8,6 +8,7 @@ use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
+use Illuminate\Support\Facades\Route;
 
 test('the organization stores page can be rendered', function () {
     $user = User::factory()->create();
@@ -19,31 +20,14 @@ test('the organization stores page can be rendered', function () {
     $response->assertOk();
 });
 
-test('the owner can upgrade the organization to a bigger plan', function () {
-    $user = User::factory()->create();
-    $organization = $user->currentOrganization;
-
-    $premiumPlan = Plan::factory()->create(['code' => 'premium', 'max_stores' => 3, 'is_custom' => false]);
-
-    $response = $this
-        ->actingAs($user)
-        ->post(route('organizations.upgrade'), ['plan_code' => 'premium']);
-
-    $response->assertRedirect(route('organizations.stores'));
-
-    expect($organization->currentSubscription()->plan_id)->toBe($premiumPlan->id);
-});
-
-test('upgrading to the custom plan via self-service is rejected', function () {
+test('the legacy plan upgrade route is unavailable', function () {
     $user = User::factory()->create();
 
-    Plan::factory()->create(['code' => 'custom', 'is_custom' => true]);
-
-    $response = $this
+    expect(Route::has('organizations.upgrade'))->toBeFalse();
+    $this
         ->actingAs($user)
-        ->post(route('organizations.upgrade'), ['plan_code' => 'custom']);
-
-    $response->assertSessionHasErrors('plan_code');
+        ->post('/settings/organization/upgrade', ['plan_code' => 'premium'])
+        ->assertNotFound();
 });
 
 test('upgrade action refuses a plan smaller than the current store count', function () {

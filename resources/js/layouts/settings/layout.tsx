@@ -17,6 +17,11 @@ import type { NavItem } from '@/types';
 
 const sidebarNavItems: NavItem[] = [
     {
+        title: 'Dashboard Bisnis',
+        href: '/settings/organization/dashboard',
+        icon: null,
+    },
+    {
         title: 'Profile',
         href: edit(),
         icon: null,
@@ -34,6 +39,11 @@ const sidebarNavItems: NavItem[] = [
     {
         title: 'Billing',
         href: organizationStores(),
+        icon: null,
+    },
+    {
+        title: 'Transfer Stok',
+        href: '/settings/organization/stock-transfers',
         icon: null,
     },
     {
