@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react';
+import { ImageIcon, Search } from 'lucide-react';
 import type { PosItem } from '@/types/pos';
 import { formatCurrency, itemTypeLabel, PosBadge } from '../pos-utils';
 
@@ -8,6 +8,8 @@ interface Props {
     products: PosItem[];
     loading: boolean;
     onSelectProduct: (product: PosItem) => void;
+    onBarcodeSubmit: (barcode: string) => Promise<boolean>;
+    searchError?: string;
 }
 
 export function ProductGrid({
@@ -16,6 +18,8 @@ export function ProductGrid({
     products,
     loading,
     onSelectProduct,
+    onBarcodeSubmit,
+    searchError,
 }: Props) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -31,10 +35,27 @@ export function ProductGrid({
                         color: 'var(--muted-foreground)',
                     }}
                 />
+                {searchError && (
+                    <p className="mt-2 text-sm text-destructive" role="alert">
+                        {searchError}
+                    </p>
+                )}
                 <input
                     value={search}
                     onChange={(e) => onSearchChange(e.target.value)}
-                    placeholder="Cari produk, paket, promosi, SKU, atau kategori..."
+                    onKeyDown={async (event) => {
+                        if (event.key !== 'Enter' || !search.trim()) {
+                            return;
+                        }
+
+                        event.preventDefault();
+
+                        if (await onBarcodeSubmit(search.trim())) {
+                            onSearchChange('');
+                        }
+                    }}
+                    placeholder="Cari nama/SKU atau scan barcode lalu Enter"
+                    aria-label="Cari atau scan barcode produk"
                     style={{
                         width: '100%',
                         height: '40px',
@@ -106,7 +127,7 @@ export function ProductGrid({
                     ) : (
                         products.map((product) => (
                             <ProductCard
-                                key={`${product.item_type}:${product.item_id}`}
+                                key={`${product.item_type}:${product.item_id}:${product.unit_id ?? 'base'}`}
                                 product={product}
                                 onSelect={onSelectProduct}
                             />
@@ -147,6 +168,35 @@ function ProductCard({
             }}
         >
             <div>
+                <div
+                    style={{
+                        width: '100%',
+                        aspectRatio: '16 / 9',
+                        borderRadius: '6px',
+                        overflow: 'hidden',
+                        backgroundColor: 'var(--muted)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '10px',
+                        color: 'var(--muted-foreground)',
+                    }}
+                >
+                    {product.image_url ? (
+                        <img
+                            src={product.image_url}
+                            alt=""
+                            loading="lazy"
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                            }}
+                        />
+                    ) : (
+                        <ImageIcon size={24} aria-hidden="true" />
+                    )}
+                </div>
                 <div
                     style={{
                         display: 'flex',
@@ -201,6 +251,7 @@ function ProductCard({
                 }}
             >
                 {formatCurrency(product.price)}
+                {product.unit_name ? ` / ${product.unit_name}` : ''}
             </div>
         </button>
     );

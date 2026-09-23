@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\CatalogImageStorage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,6 +15,7 @@ class ProductPackage extends Model
         'sku',
         'name',
         'description',
+        'image_path',
         'base_price',
         'is_active',
     ];
@@ -22,6 +24,13 @@ class ProductPackage extends Model
         'base_price' => 'decimal:2',
         'is_active' => 'boolean',
     ];
+
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute(): ?string
+    {
+        return CatalogImageStorage::url($this->image_path);
+    }
 
     // ── Relationships ─────────────────────────────────────
 

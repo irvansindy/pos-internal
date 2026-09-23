@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { CartItem, PosItem } from '@/types/pos';
 
 export function cartItemKey(item: PosItem): string {
-    return `${item.item_type}:${item.item_id}`;
+    return `${item.item_type}:${item.item_id}:${item.unit_id ?? 'base'}`;
 }
 
 export function useCart() {
@@ -33,7 +33,7 @@ export function useCart() {
                 );
             }
 
-            return [...prev, { product, quantity: 1 }];
+            return [...prev, { product, quantity: 1, serial_ids: [] }];
         });
     }
 
@@ -49,6 +49,13 @@ export function useCart() {
                                   1,
                                   Math.min(quantity, i.product.stock),
                               ),
+                              serial_ids: i.serial_ids.slice(
+                                  0,
+                                  Math.max(
+                                      1,
+                                      Math.min(quantity, i.product.stock),
+                                  ) * (i.product.unit_conversion ?? 1),
+                              ),
                           }
                         : i,
                 )
@@ -61,6 +68,24 @@ export function useCart() {
         setCart((prev) => prev.filter((i) => cartItemKey(i.product) !== key));
     }
 
+    function setSerialIds(product: PosItem, serialIds: number[]) {
+        const key = cartItemKey(product);
+        setCart((prev) =>
+            prev.map((item) =>
+                cartItemKey(item.product) === key
+                    ? {
+                          ...item,
+                          serial_ids: serialIds.slice(
+                              0,
+                              item.quantity *
+                                  (item.product.unit_conversion ?? 1),
+                          ),
+                      }
+                    : item,
+            ),
+        );
+    }
+
     function clearCart() {
         setCart([]);
     }
@@ -70,6 +95,7 @@ export function useCart() {
         subtotal,
         addToCart,
         setQuantity,
+        setSerialIds,
         removeFromCart,
         clearCart,
     };

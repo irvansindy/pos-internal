@@ -421,6 +421,8 @@ export function RecentTransactions({
                                                                                 {
                                                                                     item.quantity
                                                                                 }{' '}
+                                                                                {item.unit_name ??
+                                                                                    'unit'}{' '}
                                                                                 @{' '}
                                                                                 {formatCurrency(
                                                                                     item.unit_price,
@@ -438,6 +440,9 @@ export function RecentTransactions({
                                                                             {
                                                                                 item.quantity
                                                                             }
+                                                                            {item.unit_name
+                                                                                ? ` ${item.unit_name}`
+                                                                                : ''}
                                                                         </div>
                                                                         <div
                                                                             style={{

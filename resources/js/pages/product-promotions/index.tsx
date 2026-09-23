@@ -16,6 +16,7 @@ import {
     Zap,
 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
+import CatalogImageInput from '@/components/catalog-image-input';
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -24,6 +25,7 @@ interface Product {
     name: string;
     sku: string;
     price: string;
+    image_url: string | null;
 }
 
 interface Trigger {
@@ -43,6 +45,7 @@ interface PromotionData {
     id: number;
     name: string;
     description: string | null;
+    image_url: string | null;
     type: 'bxgy';
     is_active: boolean;
     starts_at: string | null;
@@ -53,14 +56,14 @@ interface PromotionData {
         id: number;
         product_id: number;
         min_quantity: number;
-        product: Pick<Product, 'id' | 'name' | 'sku'>;
+        product: Pick<Product, 'id' | 'name' | 'sku' | 'image_url'>;
     }>;
     rewards: Array<{
         id: number;
         product_id: number;
         quantity: number;
         extra_charge: string;
-        product: Pick<Product, 'id' | 'name' | 'sku'>;
+        product: Pick<Product, 'id' | 'name' | 'sku' | 'image_url'>;
     }>;
 }
 
@@ -89,8 +92,11 @@ interface Props {
 }
 
 interface FormData {
+    _method?: 'put';
     name: string;
     description: string;
+    image: File | null;
+    remove_image: boolean;
     type: 'bxgy';
     is_active: boolean;
     starts_at: string;
@@ -512,12 +518,14 @@ function PromotionFormFields({
     setData,
     processing,
     products,
+    currentImageUrl,
 }: {
     data: FormData;
     errors: Partial<Record<string, string>>;
     setData: (key: string, value: any) => void;
     processing: boolean;
     products: Product[];
+    currentImageUrl?: string | null;
 }) {
     // ── Trigger helpers ────────────────────────────────────
     function addTrigger() {
@@ -600,6 +608,19 @@ function PromotionFormFields({
                     }}
                 />
             </Field>
+
+            <CatalogImageInput
+                id="promotion-image"
+                label="Foto promosi"
+                currentImageUrl={currentImageUrl}
+                removeImage={data.remove_image}
+                error={(errors as any).image}
+                disabled={processing}
+                onFileChange={(file) => setData('image', file)}
+                onRemoveImageChange={(remove) =>
+                    setData('remove_image', remove)
+                }
+            />
 
             <div
                 style={{
@@ -1022,6 +1043,8 @@ function CreatePromotionModal({
         useForm<FormData>({
             name: '',
             description: '',
+            image: null,
+            remove_image: false,
             type: 'bxgy',
             is_active: true,
             starts_at: '',
@@ -1032,6 +1055,7 @@ function CreatePromotionModal({
 
     function submit() {
         post(buildUrl('/product-promotions', teamSlug), {
+            forceFormData: true,
             onSuccess: () => {
                 reset();
                 onClose();
@@ -1113,9 +1137,12 @@ function EditPromotionModal({
     products: Product[];
     teamSlug: string;
 }) {
-    const { data, setData, put, errors, processing } = useForm<FormData>({
+    const { data, setData, post, errors, processing } = useForm<FormData>({
+        _method: 'put',
         name: promotion.name,
         description: promotion.description ?? '',
+        image: null,
+        remove_image: false,
         type: promotion.type,
         is_active: promotion.is_active,
         starts_at: promotion.starts_at ?? '',
@@ -1132,7 +1159,8 @@ function EditPromotionModal({
     });
 
     function submit() {
-        put(buildUrl(`/product-promotions/${promotion.id}`, teamSlug), {
+        post(buildUrl(`/product-promotions/${promotion.id}`, teamSlug), {
+            forceFormData: true,
             onSuccess: onClose,
         });
     }
@@ -1150,6 +1178,7 @@ function EditPromotionModal({
                 setData={(k, v) => setData(k as any, v)}
                 processing={processing}
                 products={products}
+                currentImageUrl={promotion.image_url}
             />
             <div
                 style={{
@@ -1366,9 +1395,23 @@ function PromotionCard({
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0,
+                        overflow: 'hidden',
                     }}
                 >
-                    <Tag size={18} />
+                    {promotion.image_url ? (
+                        <img
+                            src={promotion.image_url}
+                            alt=""
+                            loading="lazy"
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                            }}
+                        />
+                    ) : (
+                        <Tag size={18} aria-hidden="true" />
+                    )}
                 </div>
 
                 {/* Info */}
@@ -1584,6 +1627,20 @@ function PromotionCard({
                                         backgroundColor: 'var(--muted)',
                                     }}
                                 >
+                                    {trigger.product.image_url && (
+                                        <img
+                                            src={trigger.product.image_url}
+                                            alt=""
+                                            loading="lazy"
+                                            style={{
+                                                width: '36px',
+                                                height: '36px',
+                                                flexShrink: 0,
+                                                borderRadius: '6px',
+                                                objectFit: 'cover',
+                                            }}
+                                        />
+                                    )}
                                     <span
                                         style={{
                                             fontSize: '11px',
@@ -1667,6 +1724,20 @@ function PromotionCard({
                                             border: `1px solid ${isFree ? 'hsl(142 76% 85%)' : 'hsl(43 96% 80%)'}`,
                                         }}
                                     >
+                                        {reward.product.image_url && (
+                                            <img
+                                                src={reward.product.image_url}
+                                                alt=""
+                                                loading="lazy"
+                                                style={{
+                                                    width: '36px',
+                                                    height: '36px',
+                                                    flexShrink: 0,
+                                                    borderRadius: '6px',
+                                                    objectFit: 'cover',
+                                                }}
+                                            />
+                                        )}
                                         <span
                                             style={{
                                                 fontSize: '11px',

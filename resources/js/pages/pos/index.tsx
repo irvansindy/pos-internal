@@ -57,13 +57,29 @@ export default function PosIndex({
         subtotal,
         addToCart,
         setQuantity,
+        setSerialIds,
         removeFromCart,
         clearCart,
     } = useCart();
-    const { search, setSearch, filteredProducts, loading } = useProductSearch(
-        teamSlug,
-        products,
-    );
+    const { search, setSearch, filteredProducts, loading, findByBarcode } =
+        useProductSearch(teamSlug, products);
+
+    async function addScannedProduct(barcode: string): Promise<boolean> {
+        const product = await findByBarcode(barcode);
+
+        if (!product) {
+            setErrors({
+                barcode: 'Barcode tidak ditemukan pada katalog aktif.',
+            });
+
+            return false;
+        }
+
+        addToCart(product);
+        setErrors((current) => ({ ...current, barcode: '' }));
+
+        return true;
+    }
 
     // ── Checkout form state ────────────────────────────────────────────────────
     const [customerName, setCustomerName] = useState('');
@@ -285,6 +301,17 @@ export default function PosIndex({
             return 'Keranjang transaksi masih kosong.';
         }
 
+        const incompleteSerialItem = cart.find(
+            (item) =>
+                item.product.tracks_serials &&
+                item.serial_ids.length !==
+                    item.quantity * (item.product.unit_conversion ?? 1),
+        );
+
+        if (incompleteSerialItem) {
+            return `Pilih nomor serial untuk setiap unit ${incompleteSerialItem.product.name}.`;
+        }
+
         if (!paymentMethod) {
             return 'Metode pembayaran wajib dipilih.';
         }
@@ -338,6 +365,8 @@ export default function PosIndex({
                     item_type: item.product.item_type,
                     item_id: item.product.item_id,
                     quantity: item.quantity,
+                    unit_id: item.product.unit_id ?? null,
+                    inventory_serial_ids: item.serial_ids,
                 })),
             },
             {
@@ -452,6 +481,8 @@ export default function PosIndex({
                             products={filteredProducts}
                             loading={loading}
                             onSelectProduct={addToCart}
+                            onBarcodeSubmit={addScannedProduct}
+                            searchError={errors.barcode}
                         />
                         <RecentTransactions
                             transactions={recentTransactions}
@@ -493,6 +524,7 @@ export default function PosIndex({
                         processing={processing}
                         errors={errors}
                         onSetQuantity={setQuantity}
+                        onSetSerialIds={setSerialIds}
                         onRemoveItem={removeFromCart}
                         onClearCart={clearCart}
                         onSetCustomerName={setCustomerName}

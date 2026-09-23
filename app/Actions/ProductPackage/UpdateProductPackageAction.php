@@ -5,40 +5,62 @@ namespace App\Actions\ProductPackage;
 use App\Models\ProductPackage;
 use App\Models\ProductPackageAddonGroup;
 use App\Models\Team;
+use App\Support\CatalogImageStorage;
 use App\Support\TeamCatalogReferenceGuard;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class UpdateProductPackageAction
 {
     public function execute(ProductPackage $package, array $data): ProductPackage
     {
-        return DB::transaction(function () use ($package, $data) {
-            $team = Team::query()->findOrFail($package->team_id);
-            TeamCatalogReferenceGuard::ensure(
-                $team,
-                $this->productIds($data),
-                $data['category_id'] ?? $package->category_id,
-            );
+        $oldImagePath = $package->image_path;
+        $newImagePath = isset($data['image'])
+            ? CatalogImageStorage::store($data['image'], "catalog/teams/{$package->team_id}/packages")
+            : null;
+        $imagePath = $newImagePath
+            ?? (($data['remove_image'] ?? false) ? null : $oldImagePath);
 
-            $package->update([
-                'category_id' => $data['category_id'] ?? $package->category_id,
-                'sku' => $data['sku'] ?? $package->sku,
-                'name' => $data['name'] ?? $package->name,
-                'description' => $data['description'] ?? $package->description,
-                'base_price' => $data['base_price'] ?? $package->base_price,
-                'is_active' => $data['is_active'] ?? $package->is_active,
-            ]);
+        try {
+            $updatedPackage = DB::transaction(function () use ($package, $data, $imagePath) {
+                $team = Team::query()->findOrFail($package->team_id);
+                TeamCatalogReferenceGuard::ensure(
+                    $team,
+                    $this->productIds($data),
+                    $data['category_id'] ?? $package->category_id,
+                );
 
-            if (array_key_exists('items', $data)) {
-                $this->syncItems($package, $data['items']);
-            }
+                $package->update([
+                    'category_id' => $data['category_id'] ?? $package->category_id,
+                    'sku' => $data['sku'] ?? $package->sku,
+                    'name' => $data['name'] ?? $package->name,
+                    'description' => $data['description'] ?? $package->description,
+                    'image_path' => $imagePath,
+                    'base_price' => $data['base_price'] ?? $package->base_price,
+                    'is_active' => $data['is_active'] ?? $package->is_active,
+                ]);
 
-            if (array_key_exists('addon_groups', $data)) {
-                $this->syncAddonGroups($package, $data['addon_groups']);
-            }
+                if (array_key_exists('items', $data)) {
+                    $this->syncItems($package, $data['items']);
+                }
 
-            return $package->refresh()->load(['items.product', 'addonGroups.options.product']);
-        });
+                if (array_key_exists('addon_groups', $data)) {
+                    $this->syncAddonGroups($package, $data['addon_groups']);
+                }
+
+                return $package->refresh()->load(['items.product', 'addonGroups.options.product']);
+            });
+        } catch (Throwable $exception) {
+            CatalogImageStorage::delete($newImagePath);
+
+            throw $exception;
+        }
+
+        if ($imagePath !== $oldImagePath) {
+            CatalogImageStorage::delete($oldImagePath);
+        }
+
+        return $updatedPackage;
     }
 
     private function productIds(array $data): array

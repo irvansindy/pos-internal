@@ -20,6 +20,8 @@ class UpdateProductPromotionRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'remove_image' => ['sometimes', 'boolean'],
             'type' => ['required', Rule::in([ProductPromotion::TYPE_BXGY])],
             'is_active' => ['boolean'],
             'starts_at' => ['nullable', 'date', 'before_or_equal:ends_at'],
@@ -58,6 +60,9 @@ class UpdateProductPromotionRequest extends FormRequest
             'rewards.*.quantity.min' => 'Jumlah hadiah minimal 1.',
             'rewards.*.extra_charge.required' => 'Biaya tambahan hadiah wajib diisi (0 = gratis).',
             'rewards.*.extra_charge.min' => 'Biaya tambahan tidak boleh negatif.',
+            'image.image' => 'File foto promosi tidak valid.',
+            'image.mimes' => 'Foto promosi harus berformat JPG, PNG, atau WebP.',
+            'image.max' => 'Ukuran foto promosi maksimal 2 MB.',
         ];
     }
 }

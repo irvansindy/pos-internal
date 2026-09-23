@@ -28,6 +28,9 @@ interface ItemOption {
     product_sku: string | null;
     unit_price: string;
     quantity: number;
+    unit_conversion: number;
+    tracks_serials: boolean;
+    available_serials: Array<{ id: number; serial_number: string }>;
 }
 
 interface PaginationLink {
@@ -105,6 +108,7 @@ function ReturnModal({
         restock: true,
         status: 'approved',
         reason: '',
+        inventory_serial_ids: [] as number[],
     });
 
     if (!open) {
@@ -154,6 +158,7 @@ function ReturnModal({
                                     setForm((current) => ({
                                         ...current,
                                         transaction_item_id: event.target.value,
+                                        inventory_serial_ids: [],
                                     }))
                                 }
                             >
@@ -241,6 +246,62 @@ function ReturnModal({
                             Kembalikan stok produk
                         </label>
                     </div>
+
+                    {selected?.tracks_serials &&
+                        form.restock &&
+                        form.status === 'approved' && (
+                            <fieldset className="mt-4 rounded-xl border border-slate-200 p-4">
+                                <legend className="px-1 text-sm font-medium text-slate-700">
+                                    Nomor serial yang kembali
+                                </legend>
+                                <p className="mb-3 text-xs text-slate-500">
+                                    Pilih{' '}
+                                    {Number(form.quantity || 0) *
+                                        selected.unit_conversion}{' '}
+                                    serial. Terpilih{' '}
+                                    {form.inventory_serial_ids.length}.
+                                </p>
+                                <div className="grid max-h-44 gap-2 overflow-y-auto sm:grid-cols-2">
+                                    {selected.available_serials.map(
+                                        (serial) => (
+                                            <label
+                                                key={serial.id}
+                                                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={form.inventory_serial_ids.includes(
+                                                        serial.id,
+                                                    )}
+                                                    onChange={(event) =>
+                                                        setForm((current) => ({
+                                                            ...current,
+                                                            inventory_serial_ids:
+                                                                event.target
+                                                                    .checked
+                                                                    ? [
+                                                                          ...current.inventory_serial_ids,
+                                                                          serial.id,
+                                                                      ]
+                                                                    : current.inventory_serial_ids.filter(
+                                                                          (
+                                                                              id,
+                                                                          ) =>
+                                                                              id !==
+                                                                              serial.id,
+                                                                      ),
+                                                        }))
+                                                    }
+                                                />
+                                                <span className="font-mono">
+                                                    {serial.serial_number}
+                                                </span>
+                                            </label>
+                                        ),
+                                    )}
+                                </div>
+                            </fieldset>
+                        )}
 
                     <label className="mt-4 block space-y-2 text-sm font-medium text-slate-700">
                         Alasan

@@ -31,7 +31,9 @@ class TransactionReturnController extends Controller
         $this->applyFilters($query, $filters);
 
         $transactionItems = $team->transactions()
-            ->with(['items' => fn ($query) => $query->whereNotNull('product_id')])
+            ->with(['items' => fn ($query) => $query
+                ->whereNotNull('product_id')
+                ->with(['product:id,tracks_serials', 'serials.inventorySerial:id,status'])])
             ->where('status', Transaction::STATUS_COMPLETED)
             ->whereIn('payment_status', [Transaction::PAYMENT_STATUS_PAID, Transaction::PAYMENT_STATUS_PARTIAL])
             ->where('paid_amount', '>', 0)
@@ -48,6 +50,15 @@ class TransactionReturnController extends Controller
                 'product_sku' => $item->product_sku,
                 'unit_price' => $item->unit_price,
                 'quantity' => $item->quantity,
+                'unit_conversion' => max((int) $item->unit_conversion, 1),
+                'tracks_serials' => (bool) $item->product?->tracks_serials,
+                'available_serials' => $item->serials
+                    ->filter(fn ($serial) => $serial->inventorySerial?->status === 'sold')
+                    ->map(fn ($serial) => [
+                        'id' => $serial->inventory_serial_id,
+                        'serial_number' => $serial->serial_number,
+                    ])
+                    ->values(),
             ]))
             ->values();
 
@@ -85,6 +96,8 @@ class TransactionReturnController extends Controller
             'restock' => ['nullable', 'boolean'],
             'status' => ['nullable', 'string', 'in:approved,pending,rejected'],
             'reason' => ['nullable', 'string', 'max:1000'],
+            'inventory_serial_ids' => ['nullable', 'array'],
+            'inventory_serial_ids.*' => ['integer', 'distinct'],
         ]);
 
         $action->execute($team, $user, $validated);

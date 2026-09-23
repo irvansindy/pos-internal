@@ -33,8 +33,8 @@ class ProductPromotionController extends Controller
 
         $promotions = $team->productPromotions()
             ->with([
-                'triggers.product:id,name,sku',
-                'rewards.product:id,name,sku',
+                'triggers.product:id,name,sku,image_path',
+                'rewards.product:id,name,sku,image_path',
             ])
             ->withCount(['triggers', 'rewards'])
             ->orderByDesc('is_active')
@@ -51,7 +51,7 @@ class ProductPromotionController extends Controller
         $products = $team->products()
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name', 'sku', 'price']);
+            ->get(['id', 'name', 'sku', 'price', 'image_path']);
 
         return Inertia::render('product-promotions/index', [
             'promotions' => $promotions,
@@ -198,7 +198,7 @@ class ProductPromotionController extends Controller
 
     private function activityFields(): array
     {
-        return ['name', 'description', 'type', 'is_active', 'starts_at', 'ends_at'];
+        return ['name', 'description', 'image_path', 'type', 'is_active', 'starts_at', 'ends_at'];
     }
 
     private function buildChanges(array $before, array $after): array

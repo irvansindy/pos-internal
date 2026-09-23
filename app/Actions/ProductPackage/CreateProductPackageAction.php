@@ -5,8 +5,10 @@ namespace App\Actions\ProductPackage;
 use App\Models\ProductPackage;
 use App\Models\ProductPackageAddonGroup;
 use App\Models\Team;
+use App\Support\CatalogImageStorage;
 use App\Support\TeamCatalogReferenceGuard;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class CreateProductPackageAction
 {
@@ -40,28 +42,39 @@ class CreateProductPackageAction
      */
     public function execute(Team $team, array $data): ProductPackage
     {
-        return DB::transaction(function () use ($team, $data) {
-            TeamCatalogReferenceGuard::ensure(
-                $team,
-                $this->productIds($data),
-                $data['category_id'] ?? null,
-            );
+        $imagePath = isset($data['image'])
+            ? CatalogImageStorage::store($data['image'], "catalog/teams/{$team->id}/packages")
+            : null;
 
-            /** @var ProductPackage $package */
-            $package = $team->productPackages()->create([
-                'category_id' => $data['category_id'] ?? null,
-                'sku' => $data['sku'],
-                'name' => $data['name'],
-                'description' => $data['description'] ?? null,
-                'base_price' => $data['base_price'],
-                'is_active' => $data['is_active'] ?? true,
-            ]);
+        try {
+            return DB::transaction(function () use ($team, $data, $imagePath) {
+                TeamCatalogReferenceGuard::ensure(
+                    $team,
+                    $this->productIds($data),
+                    $data['category_id'] ?? null,
+                );
 
-            $this->syncItems($package, $data['items'] ?? []);
-            $this->syncAddonGroups($package, $data['addon_groups'] ?? []);
+                /** @var ProductPackage $package */
+                $package = $team->productPackages()->create([
+                    'category_id' => $data['category_id'] ?? null,
+                    'sku' => $data['sku'],
+                    'name' => $data['name'],
+                    'description' => $data['description'] ?? null,
+                    'image_path' => $imagePath,
+                    'base_price' => $data['base_price'],
+                    'is_active' => $data['is_active'] ?? true,
+                ]);
 
-            return $package->load(['items.product', 'addonGroups.options.product']);
-        });
+                $this->syncItems($package, $data['items'] ?? []);
+                $this->syncAddonGroups($package, $data['addon_groups'] ?? []);
+
+                return $package->load(['items.product', 'addonGroups.options.product']);
+            });
+        } catch (Throwable $exception) {
+            CatalogImageStorage::delete($imagePath);
+
+            throw $exception;
+        }
     }
 
     private function productIds(array $data): array

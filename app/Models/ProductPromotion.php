@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\CatalogImageStorage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,7 @@ class ProductPromotion extends Model
         'team_id',
         'name',
         'description',
+        'image_path',
         'type',
         'is_active',
         'starts_at',
@@ -27,6 +29,13 @@ class ProductPromotion extends Model
         'starts_at' => 'date',
         'ends_at' => 'date',
     ];
+
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute(): ?string
+    {
+        return CatalogImageStorage::url($this->image_path);
+    }
 
     // ── Relationships ─────────────────────────────────────
 

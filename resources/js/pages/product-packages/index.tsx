@@ -15,6 +15,7 @@ import {
     Zap,
 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
+import CatalogImageInput from '@/components/catalog-image-input';
 
 // ─── Types ────────────────────────────────────────────────
 interface Category {
@@ -27,6 +28,7 @@ interface Product {
     name: string;
     sku: string;
     price: string;
+    image_url: string | null;
 }
 
 interface PackageItem {
@@ -57,6 +59,7 @@ interface PackageData {
     sku: string;
     name: string;
     description: string | null;
+    image_url: string | null;
     base_price: string;
     is_active: boolean;
     category_id: number | null;
@@ -443,10 +446,13 @@ function AddButton({ onClick, label }: { onClick: () => void; label: string }) {
 
 // ─── Package Form (shared by Create & Edit) ───────────────
 interface PackageFormData {
+    _method?: 'put';
     category_id: string;
     sku: string;
     name: string;
     description: string;
+    image: File | null;
+    remove_image: boolean;
     base_price: string;
     is_active: boolean;
     items: PackageItem[];
@@ -460,6 +466,7 @@ function PackageFormFields({
     processing,
     categories,
     products,
+    currentImageUrl,
 }: {
     data: PackageFormData;
     errors: Partial<Record<string, string>>;
@@ -467,6 +474,7 @@ function PackageFormFields({
     processing: boolean;
     categories: Category[];
     products: Product[];
+    currentImageUrl?: string | null;
 }) {
     const productMap = useMemo(() => {
         const m: Record<number, Product> = {};
@@ -667,6 +675,19 @@ function PackageFormFields({
                     }}
                 />
             </Field>
+
+            <CatalogImageInput
+                id="package-image"
+                label="Foto paket"
+                currentImageUrl={currentImageUrl}
+                removeImage={data.remove_image}
+                error={(errors as any).image}
+                disabled={processing}
+                onFileChange={(file) => setData('image', file)}
+                onRemoveImageChange={(remove) =>
+                    setData('remove_image', remove)
+                }
+            />
 
             <div
                 style={{
@@ -1156,6 +1177,8 @@ function CreatePackageModal({
             sku: '',
             name: '',
             description: '',
+            image: null,
+            remove_image: false,
             base_price: '',
             is_active: true,
             items: [],
@@ -1164,6 +1187,7 @@ function CreatePackageModal({
 
     function submit() {
         post(buildUrl('/product-packages', teamSlug), {
+            forceFormData: true,
             onSuccess: () => {
                 reset();
                 onClose();
@@ -1247,12 +1271,15 @@ function EditPackageModal({
     products: Product[];
     teamSlug: string;
 }) {
-    const { data, setData, put, errors, processing } = useForm<PackageFormData>(
-        {
+    const { data, setData, post, errors, processing } =
+        useForm<PackageFormData>({
+            _method: 'put',
             category_id: pkg.category_id?.toString() ?? '',
             sku: pkg.sku,
             name: pkg.name,
             description: pkg.description ?? '',
+            image: null,
+            remove_image: false,
             base_price: pkg.base_price,
             is_active: pkg.is_active,
             items: pkg.items.map((i) => ({
@@ -1271,11 +1298,11 @@ function EditPackageModal({
                     sort_order: o.sort_order,
                 })),
             })),
-        },
-    );
+        });
 
     function submit() {
-        put(buildUrl(`/product-packages/${pkg.id}`, teamSlug), {
+        post(buildUrl(`/product-packages/${pkg.id}`, teamSlug), {
+            forceFormData: true,
             onSuccess: onClose,
         });
     }
@@ -1294,6 +1321,7 @@ function EditPackageModal({
                 processing={processing}
                 categories={categories}
                 products={products}
+                currentImageUrl={pkg.image_url}
             />
             <div
                 style={{
@@ -1503,9 +1531,23 @@ function PackageCard({
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0,
+                        overflow: 'hidden',
                     }}
                 >
-                    <Box size={18} />
+                    {pkg.image_url ? (
+                        <img
+                            src={pkg.image_url}
+                            alt=""
+                            loading="lazy"
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                            }}
+                        />
+                    ) : (
+                        <Box size={18} aria-hidden="true" />
+                    )}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div
@@ -1705,6 +1747,20 @@ function PackageCard({
                                         backgroundColor: 'var(--muted)',
                                     }}
                                 >
+                                    {item.product.image_url && (
+                                        <img
+                                            src={item.product.image_url}
+                                            alt=""
+                                            loading="lazy"
+                                            style={{
+                                                width: '36px',
+                                                height: '36px',
+                                                flexShrink: 0,
+                                                borderRadius: '6px',
+                                                objectFit: 'cover',
+                                            }}
+                                        />
+                                    )}
                                     <span
                                         style={{
                                             fontSize: '11px',

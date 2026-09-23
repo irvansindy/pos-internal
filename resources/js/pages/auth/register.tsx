@@ -10,7 +10,7 @@ import { login } from '@/routes';
 import { store } from '@/routes/register';
 
 const fieldClass =
-    'border-[#65756d] bg-white focus-visible:border-[#123c30] focus-visible:ring-[#123c30] dark:border-[#7d8e85] dark:bg-[#0d1512] dark:focus-visible:border-[#edf2ec] dark:focus-visible:ring-[#edf2ec]';
+    'border-[#65756d] bg-white focus-visible:border-[#123c30] focus-visible:ring-[#123c30] dark:border-[#68717A] dark:bg-[#15181B] dark:focus-visible:border-[#FF6B3D] dark:focus-visible:ring-[#FF6B3D]';
 
 export default function Register() {
     return (
@@ -118,7 +118,7 @@ export default function Register() {
 
                             <Button
                                 type="submit"
-                                className="mt-1 min-h-12 w-full bg-[#b9472d] font-semibold text-white hover:bg-[#963820] focus-visible:border-[#123c30] focus-visible:ring-[#123c30] dark:focus-visible:border-[#edf2ec] dark:focus-visible:ring-[#edf2ec]"
+                                className="mt-1 min-h-12 w-full bg-[#b9472d] font-semibold text-white hover:bg-[#963820] focus-visible:border-[#123c30] focus-visible:ring-[#123c30] dark:bg-[#FF6B3D] dark:text-[#101214] dark:hover:bg-[#FF835F] dark:focus-visible:border-[#FF6B3D] dark:focus-visible:ring-[#FF6B3D]"
                                 disabled={processing}
                                 data-test="register-user-button"
                             >
@@ -129,11 +129,11 @@ export default function Register() {
                             </Button>
                         </div>
 
-                        <p className="border-t border-[#aab3ae] pt-5 text-sm text-[#53635b] dark:border-[#46544d] dark:text-[#a9b7af]">
+                        <p className="border-t border-[#aab3ae] pt-5 text-sm text-[#53635b] dark:border-[#40474E] dark:text-[#AEB4B9]">
                             Sudah punya akun?{' '}
                             <TextLink
                                 href={login()}
-                                className="font-semibold text-[#123c30] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#123c30] dark:text-[#edf2ec] dark:focus-visible:outline-[#f3f1e9]"
+                                className="font-semibold text-[#123c30] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#123c30] dark:text-[#F4F1E8] dark:focus-visible:outline-[#FF6B3D]"
                             >
                                 Masuk
                             </TextLink>

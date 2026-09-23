@@ -53,6 +53,7 @@ interface Props {
 
     // Callbacks
     onSetQuantity: (product: PosItem, qty: number) => void;
+    onSetSerialIds: (product: PosItem, serialIds: number[]) => void;
     onRemoveItem: (product: PosItem) => void;
     onClearCart: () => void;
     onSetCustomerName: (v: string) => void;
@@ -94,6 +95,7 @@ export function CartPanel({
     processing,
     errors,
     onSetQuantity,
+    onSetSerialIds,
     onRemoveItem,
     onClearCart,
     onSetCustomerName,
@@ -227,9 +229,10 @@ export function CartPanel({
                 ) : (
                     cart.map((item) => (
                         <CartItemRow
-                            key={`${item.product.item_type}:${item.product.item_id}`}
+                            key={`${item.product.item_type}:${item.product.item_id}:${item.product.unit_id ?? 'base'}`}
                             item={item}
                             onSetQuantity={onSetQuantity}
+                            onSetSerialIds={onSetSerialIds}
                             onRemove={onRemoveItem}
                         />
                     ))
@@ -582,10 +585,12 @@ export function CartPanel({
 function CartItemRow({
     item,
     onSetQuantity,
+    onSetSerialIds,
     onRemove,
 }: {
     item: CartItem;
     onSetQuantity: (product: PosItem, qty: number) => void;
+    onSetSerialIds: (product: PosItem, serialIds: number[]) => void;
     onRemove: (product: PosItem) => void;
 }) {
     const lineTotal = parseFloat(item.product.price) * item.quantity;
@@ -658,6 +663,84 @@ function CartItemRow({
                         <Plus size={14} />
                     </QtyButton>
                 </div>
+
+                {item.product.tracks_serials && (
+                    <fieldset
+                        style={{
+                            marginTop: '10px',
+                            padding: '8px',
+                            border: '1px solid var(--border)',
+                            borderRadius: '6px',
+                        }}
+                    >
+                        <legend
+                            style={{
+                                padding: '0 4px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                            }}
+                        >
+                            Serial {item.serial_ids.length}/
+                            {item.quantity *
+                                (item.product.unit_conversion ?? 1)}
+                        </legend>
+                        <div
+                            style={{
+                                display: 'grid',
+                                gap: '6px',
+                                marginTop: '4px',
+                            }}
+                        >
+                            {item.product.available_serials?.map((serial) => {
+                                const checked = item.serial_ids.includes(
+                                    serial.id,
+                                );
+                                const required =
+                                    item.quantity *
+                                    (item.product.unit_conversion ?? 1);
+
+                                return (
+                                    <label
+                                        key={serial.id}
+                                        style={{
+                                            minHeight: '36px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            fontSize: '12px',
+                                        }}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={checked}
+                                            disabled={
+                                                !checked &&
+                                                item.serial_ids.length >=
+                                                    required
+                                            }
+                                            onChange={(event) =>
+                                                onSetSerialIds(
+                                                    item.product,
+                                                    event.target.checked
+                                                        ? [
+                                                              ...item.serial_ids,
+                                                              serial.id,
+                                                          ]
+                                                        : item.serial_ids.filter(
+                                                              (id) =>
+                                                                  id !==
+                                                                  serial.id,
+                                                          ),
+                                                )
+                                            }
+                                        />
+                                        {serial.serial_number}
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    </fieldset>
+                )}
             </div>
 
             <div style={{ textAlign: 'right' }}>

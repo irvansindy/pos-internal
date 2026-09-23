@@ -121,7 +121,7 @@ class MenuSeeder extends Seeder
                     ],
                     [
                         'name' => 'inventory-operations',
-                        'label' => 'PO & Stok Opname',
+                        'label' => 'Inventori & Pembelian',
                         'route' => 'inventory-operations.index',
                         'icon' => 'ClipboardCheck',
                         'permissions' => ['inventory.view'],

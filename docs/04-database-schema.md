@@ -12,6 +12,41 @@ Dokumen ini mendeskripsikan struktur database aplikasi berdasarkan seluruh file 
 
 `transactions`, `transaction_refunds`, dan `transaction_returns` memiliki relasi opsional ke `cashier_shifts`. Return juga menyimpan `refund_method` untuk memastikan rekonsiliasi tunai tidak mencampur metode pembayaran lain.
 
+## Fondasi inventori retail
+
+`products.parent_product_id` dan `variant_name` membentuk hubungan produk induk
+dan SKU varian. `barcode`, `base_unit`, serta `tracks_batches` mengatur identitas
+scan, satuan stok dasar, dan pelacakan batch.
+
+`product_units` menyimpan satuan penjualan alternatif beserta faktor konversi,
+harga, dan barcode. `transaction_items` menyimpan snapshot `product_unit_id`,
+`unit_name`, `unit_conversion`, dan `base_quantity`.
+
+`inventory_batches` menyimpan saldo per nomor batch dan tanggal kedaluwarsa.
+`inventory_batch_movements` menghubungkan perubahan saldo batch dengan
+`product_stock_movements`; pengeluaran menggunakan urutan FEFO.
+
+## Inventori lokasi dan procurement lanjutan
+
+`warehouses` dan `warehouse_bins` mendefinisikan lokasi fisik per toko.
+`inventory_location_balances` menyimpan saldo produk per bin dan batch,
+sedangkan `inventory_location_movements` menjadi audit trail yang terhubung ke
+ledger `product_stock_movements`.
+
+`inventory_serials` menyimpan serial unik dalam lingkup toko beserta produk,
+batch, bin, dan statusnya. `transaction_item_serials` mempertahankan snapshot
+serial pada penjualan agar retur dan void dapat memulihkan unit yang tepat.
+
+`purchase_invoices` dan `purchase_invoice_items` mencatat tagihan supplier dari
+kuantitas PO yang sudah diterima. `purchase_invoice_payments` menjadi ledger
+pembayaran hutang. `landed_costs` dan `landed_cost_allocations` mengalokasikan
+biaya tambahan ke item invoice dan memperbarui harga modal tertimbang.
+
+`supplier_returns` dan `supplier_return_items` mengurangi stok dari batch/bin
+yang dipilih serta mengurangi saldo hutang supplier. Untuk transfer antartoko,
+`stock_transfer_batch_allocations` menjaga pasangan batch/bin asal dan tujuan,
+sementara `stock_transfer_serials` menjaga identitas unit yang dipindahkan.
+
 ## Daftar Isi
 
 - [1. Konvensi Umum](#1-konvensi-umum)

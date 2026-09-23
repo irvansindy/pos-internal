@@ -16,6 +16,7 @@ use App\Models\CashierShift;
 use App\Models\Product;
 use App\Models\ProductPackage;
 use App\Models\ProductPromotion;
+use App\Models\ProductUnit;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Models\Voucher;
@@ -45,19 +46,21 @@ class PosController extends Controller
         setPermissionsTeamId($team->id);
 
         $products = $team->products()
-            ->with('category:id,name')
+            ->select(['id', 'team_id', 'category_id', 'sku', 'barcode', 'base_unit', 'name', 'variant_name', 'image_path', 'price', 'stock', 'min_stock', 'tracks_batches', 'tracks_serials'])
+            ->with(['category:id,name', 'units' => fn ($query) => $query->where('is_active', true)->orderBy('conversion_quantity'), 'inventorySerials' => fn ($query) => $query->where('status', 'in_stock')->orderBy('serial_number')])
+            ->withSum(['inventoryBatches as sellable_batch_stock' => fn ($query) => $query->where('quantity', '>', 0)->where(fn ($query) => $query->whereNull('expires_at')->orWhereDate('expires_at', '>=', today()))], 'quantity')
             ->where('is_active', true)
             ->where('stock', '>', 0)
             ->orderBy('name')
             ->limit(40)
-            ->get(['id', 'category_id', 'sku', 'name', 'price', 'stock', 'min_stock']);
+            ->get();
 
         $packages = $team->productPackages()
             ->with(['category:id,name', 'items.product:id,name,sku,stock,is_active'])
             ->where('is_active', true)
             ->orderBy('name')
             ->limit(40)
-            ->get(['id', 'team_id', 'category_id', 'sku', 'name', 'base_price', 'is_active']);
+            ->get(['id', 'team_id', 'category_id', 'sku', 'name', 'image_path', 'base_price', 'is_active']);
 
         $promotions = $team->productPromotions()
             ->where('is_active', true)
@@ -67,12 +70,12 @@ class PosController extends Controller
             ])
             ->orderBy('name')
             ->limit(40)
-            ->get(['id', 'team_id', 'name', 'type', 'is_active', 'starts_at', 'ends_at']);
+            ->get(['id', 'team_id', 'name', 'image_path', 'type', 'is_active', 'starts_at', 'ends_at']);
 
         $recentTransactions = $team->transactions()
             ->with([
                 'cashier:id,name',
-                'items:id,transaction_id,product_name,product_sku,unit_price,quantity,discount_total,line_total',
+                'items:id,transaction_id,product_name,product_sku,unit_name,unit_conversion,base_quantity,unit_price,quantity,discount_total,line_total',
                 'voucher:id,code,name,type,value',
             ])
             ->latest()
@@ -150,19 +153,24 @@ class PosController extends Controller
         $team = $request->user()->currentTeam;
         $search = trim((string) $request->validated('search', ''));
 
-        $products = Product::where('team_id', $team->id)
-            ->with('category:id,name')
+        $products = Product::query()
+            ->select(['id', 'team_id', 'category_id', 'sku', 'barcode', 'base_unit', 'name', 'variant_name', 'image_path', 'price', 'stock', 'min_stock', 'tracks_batches', 'tracks_serials'])
+            ->where('team_id', $team->id)
+            ->with(['category:id,name', 'units' => fn ($query) => $query->where('is_active', true)->orderBy('conversion_quantity'), 'inventorySerials' => fn ($query) => $query->where('status', 'in_stock')->orderBy('serial_number')])
+            ->withSum(['inventoryBatches as sellable_batch_stock' => fn ($query) => $query->where('quantity', '>', 0)->where(fn ($query) => $query->whereNull('expires_at')->orWhereDate('expires_at', '>=', today()))], 'quantity')
             ->where('is_active', true)
             ->where('stock', '>', 0)
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")
-                        ->orWhere('sku', 'like', "%{$search}%");
+                        ->orWhere('sku', 'like', "%{$search}%")
+                        ->orWhere('barcode', $search)
+                        ->orWhereHas('units', fn ($query) => $query->where('barcode', $search));
                 });
             })
             ->orderBy('name')
             ->limit(30)
-            ->get(['id', 'category_id', 'sku', 'name', 'price', 'stock', 'min_stock']);
+            ->get();
 
         $packages = ProductPackage::where('team_id', $team->id)
             ->with(['category:id,name', 'items.product:id,name,sku,stock,is_active'])
@@ -176,7 +184,7 @@ class PosController extends Controller
             })
             ->orderBy('name')
             ->limit(30)
-            ->get(['id', 'team_id', 'category_id', 'sku', 'name', 'base_price', 'is_active']);
+            ->get(['id', 'team_id', 'category_id', 'sku', 'name', 'image_path', 'base_price', 'is_active']);
 
         $promotions = ProductPromotion::where('team_id', $team->id)
             ->where('is_active', true)
@@ -192,7 +200,7 @@ class PosController extends Controller
             })
             ->orderBy('name')
             ->limit(30)
-            ->get(['id', 'team_id', 'name', 'type', 'is_active', 'starts_at', 'ends_at']);
+            ->get(['id', 'team_id', 'name', 'image_path', 'type', 'is_active', 'starts_at', 'ends_at']);
 
         return response()->json([
             'products' => $this->formatSaleItems($products, $packages, $promotions)->take(30)->values(),
@@ -303,7 +311,8 @@ class PosController extends Controller
     private function formatSaleItems(Collection $products, Collection $packages, Collection $promotions): Collection
     {
         return $products
-            ->map(fn (Product $product) => $this->formatProductForPos($product))
+            ->flatMap(fn (Product $product) => collect([$this->formatProductForPos($product)])
+                ->concat($product->units->map(fn (ProductUnit $unit) => $this->formatProductForPos($product, $unit))))
             ->concat($packages->map(fn (ProductPackage $package) => $this->formatPackageForPos($package)))
             ->concat($promotions->map(fn (ProductPromotion $promotion) => $this->formatPromotionForPos($promotion)))
             ->filter(fn (array $item) => $item['stock'] > 0)
@@ -331,18 +340,34 @@ class PosController extends Controller
         return $shift;
     }
 
-    private function formatProductForPos(Product $product): array
+    private function formatProductForPos(Product $product, ?ProductUnit $unit = null): array
     {
+        $conversion = $unit?->conversion_quantity ?? 1;
+
+        $availableStock = $product->tracks_batches
+            ? (int) ($product->sellable_batch_stock ?? 0)
+            : (int) $product->stock;
+
         return [
-            'id' => $product->id,
+            'id' => $unit ? "{$product->id}:{$unit->id}" : (string) $product->id,
             'item_id' => $product->id,
             'item_type' => TransactionItem::ITEM_TYPE_PRODUCT,
+            'unit_id' => $unit?->id,
+            'unit_name' => $unit?->abbreviation ?? $product->base_unit,
+            'unit_conversion' => $conversion,
             'category_id' => $product->category_id,
-            'sku' => $product->sku,
-            'name' => $product->name,
-            'price' => (string) $product->price,
-            'stock' => (int) $product->stock,
-            'min_stock' => (int) $product->min_stock,
+            'sku' => $unit?->barcode ?: $product->sku,
+            'barcode' => $unit?->barcode ?? $product->barcode,
+            'name' => $product->variant_name ? "{$product->name} · {$product->variant_name}" : $product->name,
+            'image_url' => $product->image_url,
+            'price' => (string) ($unit?->selling_price ?? $product->price),
+            'stock' => intdiv($availableStock, $conversion),
+            'min_stock' => (int) ceil($product->min_stock / $conversion),
+            'tracks_serials' => $product->tracks_serials,
+            'available_serials' => $product->inventorySerials->map(fn ($serial) => [
+                'id' => $serial->id,
+                'serial_number' => $serial->serial_number,
+            ])->values(),
             'category' => $product->category,
         ];
     }
@@ -356,6 +381,7 @@ class PosController extends Controller
             'category_id' => $package->category_id,
             'sku' => $package->sku,
             'name' => $package->name,
+            'image_url' => $package->image_url,
             'price' => (string) $package->base_price,
             'stock' => $this->availablePackageStock($package),
             'min_stock' => 0,
@@ -372,6 +398,7 @@ class PosController extends Controller
             'category_id' => null,
             'sku' => 'PROMO-'.$promotion->id,
             'name' => $promotion->name,
+            'image_url' => $promotion->image_url,
             'price' => (string) $this->promotionUnitPrice($promotion),
             'stock' => $this->availablePromotionStock($promotion),
             'min_stock' => 0,

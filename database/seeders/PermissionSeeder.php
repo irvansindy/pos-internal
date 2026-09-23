@@ -91,8 +91,8 @@ class PermissionSeeder extends Seeder
         ],
 
         'inventory' => [
-            ['name' => 'inventory.view',   'label' => 'Lihat Operasional Stok', 'description' => 'Melihat supplier, purchase order, dan stok opname'],
-            ['name' => 'inventory.manage', 'label' => 'Kelola Operasional Stok', 'description' => 'Mengelola supplier, purchase order, dan stok opname'],
+            ['name' => 'inventory.view',   'label' => 'Lihat Inventori & Pembelian', 'description' => 'Melihat gudang, serial, purchase order, invoice, hutang, retur, dan stok opname'],
+            ['name' => 'inventory.manage', 'label' => 'Kelola Inventori & Pembelian', 'description' => 'Mengelola gudang, serial, purchase order, invoice, hutang, landed cost, retur, dan stok opname'],
         ],
 
         'report' => [

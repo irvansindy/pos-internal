@@ -4,6 +4,7 @@ namespace App\Actions\Transaction;
 
 use App\Actions\ProductStock\AdjustProductStockAction;
 use App\Models\CashierShift;
+use App\Models\InventorySerial;
 use App\Models\ProductStockMovement;
 use App\Models\Team;
 use App\Models\Transaction;
@@ -27,7 +28,7 @@ class CreateTransactionReturnAction
             $item = TransactionItem::query()
                 ->whereKey($data['transaction_item_id'])
                 ->whereHas('transaction', fn ($query) => $query->where('team_id', $team->id))
-                ->with('product')
+                ->with(['product', 'serials.inventorySerial.batch'])
                 ->lockForUpdate()
                 ->firstOrFail();
 
@@ -118,13 +119,19 @@ class CreateTransactionReturnAction
             ]);
 
             if ($return->restock && $return->status === TransactionReturn::STATUS_APPROVED && $item->product) {
-                $this->adjustProductStockAction->execute($item->product, $user, [
-                    'type' => ProductStockMovement::TYPE_IN,
-                    'quantity' => $return->quantity,
-                    'note' => "Return barang {$return->return_number}",
-                    'reference_type' => TransactionReturn::class,
-                    'reference_id' => $return->id,
-                ]);
+                $baseQuantity = $quantity * max((int) $item->unit_conversion, 1);
+
+                if ($item->product->tracks_serials) {
+                    $this->restockSerials($item, $return, $user, $data['inventory_serial_ids'] ?? [], $baseQuantity);
+                } else {
+                    $this->adjustProductStockAction->execute($item->product, $user, [
+                        'type' => ProductStockMovement::TYPE_IN,
+                        'quantity' => $baseQuantity,
+                        'note' => "Return barang {$return->return_number}",
+                        'reference_type' => TransactionReturn::class,
+                        'reference_id' => $return->id,
+                    ]);
+                }
             }
 
             return $return->load([
@@ -142,5 +149,50 @@ class CreateTransactionReturnAction
         $unitNet = $item->quantity > 0 ? $lineTotal / $item->quantity : 0;
 
         return $unitNet * $quantity;
+    }
+
+    private function restockSerials(TransactionItem $item, TransactionReturn $return, User $user, array $serialIds, int $baseQuantity): void
+    {
+        $selectedIds = collect($serialIds)->map(fn ($id) => (int) $id)->unique()->values();
+
+        if ($selectedIds->count() !== $baseQuantity) {
+            throw ValidationException::withMessages([
+                'inventory_serial_ids' => "Pilih tepat {$baseQuantity} nomor serial untuk barang yang dikembalikan.",
+            ]);
+        }
+
+        $serials = InventorySerial::query()
+            ->with('batch')
+            ->where('team_id', $return->team_id)
+            ->where('product_id', $item->product_id)
+            ->where('status', InventorySerial::STATUS_SOLD)
+            ->whereIn('id', $selectedIds)
+            ->whereHas('transactionItemSerials', fn ($query) => $query->where('transaction_item_id', $item->id))
+            ->lockForUpdate()
+            ->get();
+
+        if ($serials->count() !== $baseQuantity) {
+            throw ValidationException::withMessages([
+                'inventory_serial_ids' => 'Nomor serial tidak valid, sudah dikembalikan, atau bukan milik item transaksi ini.',
+            ]);
+        }
+
+        foreach ($serials->groupBy(fn (InventorySerial $serial) => ($serial->inventory_batch_id ?? 'none').':'.($serial->warehouse_bin_id ?? 'none')) as $group) {
+            $serial = $group->first();
+            $this->adjustProductStockAction->execute($item->product, $user, [
+                'type' => ProductStockMovement::TYPE_IN,
+                'quantity' => $group->count(),
+                'note' => "Return barang {$return->return_number}",
+                'reference_type' => TransactionReturn::class,
+                'reference_id' => $return->id,
+                'batch_number' => $serial->batch?->batch_number,
+                'expires_at' => $serial->batch?->expires_at,
+                'warehouse_bin_id' => $serial->warehouse_bin_id,
+            ]);
+        }
+
+        InventorySerial::query()->whereIn('id', $serials->pluck('id'))->update([
+            'status' => InventorySerial::STATUS_IN_STOCK,
+        ]);
     }
 }

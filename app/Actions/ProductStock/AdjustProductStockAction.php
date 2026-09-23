@@ -2,6 +2,8 @@
 
 namespace App\Actions\ProductStock;
 
+use App\Actions\InventoryBatch\RecordInventoryBatchMovementAction;
+use App\Actions\InventoryLocation\AdjustInventoryLocationAction;
 use App\Models\Product;
 use App\Models\ProductStockMovement;
 use App\Models\User;
@@ -10,6 +12,11 @@ use Illuminate\Validation\ValidationException;
 
 class AdjustProductStockAction
 {
+    public function __construct(
+        private RecordInventoryBatchMovementAction $recordBatchMovement,
+        private AdjustInventoryLocationAction $adjustLocation,
+    ) {}
+
     public function execute(Product $product, User $user, array $data): ProductStockMovement
     {
         return DB::transaction(function () use ($product, $user, $data) {
@@ -26,11 +33,15 @@ class AdjustProductStockAction
 
             $quantity = abs($stockAfter - $stockBefore);
 
+            if ($lockedProduct->tracks_batches) {
+                $this->recordBatchMovement->initialize($lockedProduct);
+            }
+
             $lockedProduct->update([
                 'stock' => $stockAfter,
             ]);
 
-            return ProductStockMovement::create([
+            $movement = ProductStockMovement::create([
                 'team_id' => $lockedProduct->team_id,
                 'product_id' => $lockedProduct->id,
                 'user_id' => $user->id,
@@ -42,6 +53,20 @@ class AdjustProductStockAction
                 'reference_type' => $data['reference_type'] ?? null,
                 'reference_id' => $data['reference_id'] ?? null,
             ]);
+
+            if ($lockedProduct->tracks_batches) {
+                $movementType = $stockAfter >= $stockBefore
+                    ? ProductStockMovement::TYPE_IN
+                    : ProductStockMovement::TYPE_OUT;
+                $this->recordBatchMovement->execute($lockedProduct, $movement, $movementType, $quantity, $data);
+            }
+
+            $locationMovementType = $stockAfter >= $stockBefore
+                ? ProductStockMovement::TYPE_IN
+                : ProductStockMovement::TYPE_OUT;
+            $this->adjustLocation->execute($lockedProduct, $movement, $locationMovementType, $quantity, $data);
+
+            return $movement;
         });
     }
 

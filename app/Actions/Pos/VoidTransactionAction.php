@@ -5,6 +5,7 @@ namespace App\Actions\Pos;
 use App\Actions\ProductStock\AdjustProductStockAction;
 use App\Models\CustomerPointTransaction;
 use App\Models\DiningTable;
+use App\Models\InventorySerial;
 use App\Models\Product;
 use App\Models\ProductStockMovement;
 use App\Models\Team;
@@ -70,6 +71,34 @@ class VoidTransactionAction
                 // Produk mungkin sudah dihapus sejak transaksi dibuat —
                 // lewati saja, tidak ada stok untuk dikembalikan.
                 if (! $product) {
+                    continue;
+                }
+
+                if ($product->tracks_serials) {
+                    $serials = InventorySerial::query()
+                        ->with('batch')
+                        ->where('team_id', $team->id)
+                        ->where('product_id', $product->id)
+                        ->where('status', InventorySerial::STATUS_SOLD)
+                        ->whereHas('transactionItemSerials', fn ($query) => $query->whereHas('transactionItem', fn ($item) => $item->where('transaction_id', $lockedTransaction->id)))
+                        ->lockForUpdate()
+                        ->get();
+
+                    foreach ($serials->groupBy(fn ($serial) => ($serial->inventory_batch_id ?? 'none').':'.($serial->warehouse_bin_id ?? 'none')) as $group) {
+                        $serial = $group->first();
+                        $this->adjustProductStockAction->execute($product, $user, [
+                            'type' => ProductStockMovement::TYPE_IN,
+                            'quantity' => $group->count(),
+                            'note' => "Pembatalan transaksi {$lockedTransaction->invoice_number}",
+                            'reference_type' => Transaction::class,
+                            'reference_id' => $lockedTransaction->id,
+                            'batch_number' => $serial->batch?->batch_number,
+                            'expires_at' => $serial->batch?->expires_at,
+                            'warehouse_bin_id' => $serial->warehouse_bin_id,
+                        ]);
+                        InventorySerial::query()->whereIn('id', $group->pluck('id'))->update(['status' => InventorySerial::STATUS_IN_STOCK]);
+                    }
+
                     continue;
                 }
 

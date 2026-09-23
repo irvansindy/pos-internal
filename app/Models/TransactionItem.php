@@ -17,12 +17,16 @@ class TransactionItem extends Model
     protected $fillable = [
         'transaction_id',
         'product_id',
+        'product_unit_id',
         'item_type',
         'item_reference_id',
         'product_name',
         'product_sku',
+        'unit_name',
+        'unit_conversion',
         'unit_price',
         'quantity',
+        'base_quantity',
         'discount_total',
         'line_total',
     ];
@@ -32,6 +36,8 @@ class TransactionItem extends Model
         'line_total' => 'decimal:2',
         'discount_total' => 'decimal:2',
         'quantity' => 'integer',
+        'unit_conversion' => 'integer',
+        'base_quantity' => 'integer',
     ];
 
     public function transaction(): BelongsTo
@@ -42,6 +48,16 @@ class TransactionItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function serials(): HasMany
+    {
+        return $this->hasMany(TransactionItemSerial::class);
+    }
+
+    public function productUnit(): BelongsTo
+    {
+        return $this->belongsTo(ProductUnit::class);
     }
 
     public function returns(): HasMany

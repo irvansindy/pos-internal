@@ -1,19 +1,26 @@
 // ─── Catalogue ────────────────────────────────────────────────────────────────
 
 export interface PosCategory {
-    id: number;
+    id: number | string;
     name: string;
 }
 
 export interface PosItem {
-    id: number;
+    id: number | string;
     item_id: number;
     item_type: 'product' | 'package' | 'promotion';
+    unit_id?: number | null;
+    unit_name?: string;
+    unit_conversion?: number;
+    barcode?: string | null;
     sku: string;
     name: string;
+    image_url?: string | null;
     price: string;
     stock: number;
     min_stock: number;
+    tracks_serials?: boolean;
+    available_serials?: { id: number; serial_number: string }[];
     category?: PosCategory | null;
 }
 
@@ -22,6 +29,7 @@ export interface PosItem {
 export interface CartItem {
     product: PosItem;
     quantity: number;
+    serial_ids: number[];
 }
 
 // ─── Voucher ──────────────────────────────────────────────────────────────────
@@ -78,6 +86,9 @@ export interface RecentTransactionItem {
     product_sku: string | null;
     unit_price: string;
     quantity: number;
+    unit_name?: string | null;
+    unit_conversion?: number;
+    base_quantity?: number | null;
     discount_total: string;
     line_total: string;
 }

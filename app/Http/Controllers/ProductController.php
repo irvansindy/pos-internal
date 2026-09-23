@@ -33,7 +33,7 @@ class ProductController extends Controller
         setPermissionsTeamId($team->id);
 
         $products = $team->products()
-            ->with(['category:id,name'])
+            ->with(['category:id,name', 'parent:id,name', 'units:id,product_id,name,abbreviation,conversion_quantity,barcode,selling_price,is_active'])
             ->withCount('activityLogs')
             ->orderBy('name')
             ->paginate(15);
@@ -50,10 +50,13 @@ class ProductController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $parentProducts = $team->products()->whereNull('parent_product_id')->orderBy('name')->get(['id', 'name', 'sku']);
+
         return Inertia::render('products/index', [
             'products' => $products,
             'recentActivity' => $recentActivity,
             'categories' => $categories,
+            'parentProducts' => $parentProducts,
             'teamSlug' => $team->slug,
             'canCreate' => $authUser->canOnCurrentTeam('product.create'),
             'canUpdate' => $authUser->canOnCurrentTeam('product.update'),
@@ -214,7 +217,7 @@ class ProductController extends Controller
         setPermissionsTeamId($team->id);
 
         $product = $this->resolveProduct($request)
-            ->load('category');
+            ->load(['category', 'parent', 'units', 'inventoryBatches' => fn ($query) => $query->where('quantity', '>', 0)->orderByRaw('expires_at IS NULL')->orderBy('expires_at')]);
 
         return Inertia::render('products/show', [
             'product' => $product,
@@ -266,13 +269,20 @@ class ProductController extends Controller
     {
         return [
             'category_id',
+            'parent_product_id',
             'sku',
+            'barcode',
+            'base_unit',
             'name',
+            'variant_name',
             'description',
+            'image_path',
             'price',
             'cost',
             'stock',
             'min_stock',
+            'tracks_batches',
+            'tracks_serials',
             'is_active',
         ];
     }

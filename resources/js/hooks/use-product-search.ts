@@ -56,9 +56,29 @@ export function useProductSearch(teamSlug: string, initialProducts: PosItem[]) {
             (p) =>
                 p.name.toLowerCase().includes(keyword) ||
                 p.sku.toLowerCase().includes(keyword) ||
+                p.barcode?.toLowerCase() === keyword ||
                 (p.category?.name.toLowerCase().includes(keyword) ?? false),
         );
     }, [serverResults, search]);
 
-    return { search, setSearch, filteredProducts, loading };
+    async function findByBarcode(barcode: string): Promise<PosItem | null> {
+        const response = await fetch(
+            `/${teamSlug}/pos/products/search?search=${encodeURIComponent(barcode)}`,
+            { headers: { Accept: 'application/json' } },
+        );
+
+        if (!response.ok) {
+            return null;
+        }
+
+        const data = (await response.json()) as { products: PosItem[] };
+
+        return (
+            data.products.find(
+                (item) => item.barcode === barcode || item.sku === barcode,
+            ) ?? null
+        );
+    }
+
+    return { search, setSearch, filteredProducts, loading, findByBarcode };
 }

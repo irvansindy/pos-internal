@@ -296,6 +296,12 @@ Route::prefix('{current_team}')
             Route::post('/suppliers', [InventoryOperationController::class, 'storeSupplier'])->name('suppliers.store')->middleware(EnsureTeamPermission::class.':inventory.manage');
             Route::post('/purchase-orders', [InventoryOperationController::class, 'storePurchaseOrder'])->name('purchase-orders.store')->middleware(EnsureTeamPermission::class.':inventory.manage');
             Route::post('/purchase-orders/{purchaseOrder}/receive', [InventoryOperationController::class, 'receivePurchaseOrder'])->name('purchase-orders.receive')->middleware(EnsureTeamPermission::class.':inventory.manage');
+            Route::post('/warehouses', [InventoryOperationController::class, 'storeWarehouse'])->name('warehouses.store')->middleware(EnsureTeamPermission::class.':inventory.manage');
+            Route::post('/warehouses/{warehouse}/bins', [InventoryOperationController::class, 'storeWarehouseBin'])->name('warehouse-bins.store')->middleware(EnsureTeamPermission::class.':inventory.manage');
+            Route::post('/purchase-invoices', [InventoryOperationController::class, 'storePurchaseInvoice'])->name('purchase-invoices.store')->middleware(EnsureTeamPermission::class.':inventory.manage');
+            Route::post('/purchase-invoices/{purchaseInvoice}/payments', [InventoryOperationController::class, 'storePurchaseInvoicePayment'])->name('purchase-invoice-payments.store')->middleware(EnsureTeamPermission::class.':inventory.manage');
+            Route::post('/purchase-invoices/{purchaseInvoice}/landed-costs', [InventoryOperationController::class, 'storeLandedCost'])->name('landed-costs.store')->middleware(EnsureTeamPermission::class.':inventory.manage');
+            Route::post('/supplier-returns', [InventoryOperationController::class, 'storeSupplierReturn'])->name('supplier-returns.store')->middleware(EnsureTeamPermission::class.':inventory.manage');
             Route::post('/stock-opnames', [InventoryOperationController::class, 'storeStockOpname'])->name('stock-opnames.store')->middleware(EnsureTeamPermission::class.':inventory.manage');
         });
 

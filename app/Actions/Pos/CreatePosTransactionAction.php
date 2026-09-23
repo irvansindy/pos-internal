@@ -8,10 +8,12 @@ use App\Actions\ProductStock\AdjustProductStockAction;
 use App\Models\CashierShift;
 use App\Models\Customer;
 use App\Models\DiningTable;
+use App\Models\InventorySerial;
 use App\Models\Product;
 use App\Models\ProductPackage;
 use App\Models\ProductPromotion;
 use App\Models\ProductStockMovement;
+use App\Models\ProductUnit;
 use App\Models\Team;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
@@ -41,12 +43,16 @@ class CreatePosTransactionAction
                     'item_type' => $item['item_type'] ?? TransactionItem::ITEM_TYPE_PRODUCT,
                     'item_id' => (int) ($item['item_id'] ?? $item['product_id']),
                     'quantity' => (int) $item['quantity'],
+                    'unit_id' => isset($item['unit_id']) ? (int) $item['unit_id'] : null,
+                    'inventory_serial_ids' => collect($item['inventory_serial_ids'] ?? [])->map(fn ($id) => (int) $id)->all(),
                 ])
-                ->groupBy(fn (array $item) => "{$item['item_type']}:{$item['item_id']}")
+                ->groupBy(fn (array $item) => "{$item['item_type']}:{$item['item_id']}:".($item['unit_id'] ?? 'base'))
                 ->map(fn (Collection $items) => [
                     'item_type' => $items->first()['item_type'],
                     'item_id' => $items->first()['item_id'],
                     'quantity' => $items->sum('quantity'),
+                    'unit_id' => $items->first()['unit_id'],
+                    'inventory_serial_ids' => $items->pluck('inventory_serial_ids')->flatten()->unique()->values()->all(),
                 ])
                 ->values();
 
@@ -55,12 +61,13 @@ class CreatePosTransactionAction
             $stockRequirements = [];
 
             $products = $this->resolveProducts($team, $cartItems);
+            $units = $this->resolveUnits($team, $cartItems);
             $packages = $this->resolvePackages($team, $cartItems);
             $promotions = $this->resolvePromotions($team, $cartItems);
 
             foreach ($cartItems as $item) {
                 $saleItem = match ($item['item_type']) {
-                    TransactionItem::ITEM_TYPE_PRODUCT => $this->buildProductLine($products, $item),
+                    TransactionItem::ITEM_TYPE_PRODUCT => $this->buildProductLine($products, $units, $item),
                     TransactionItem::ITEM_TYPE_PACKAGE => $this->buildPackageLine($packages, $item),
                     TransactionItem::ITEM_TYPE_PROMOTION => $this->buildPromotionLine($promotions, $item),
                     default => throw ValidationException::withMessages([
@@ -83,11 +90,17 @@ class CreatePosTransactionAction
                     'sku' => $saleItem['sku'],
                     'unit_price' => $saleItem['unit_price'],
                     'quantity' => $item['quantity'],
+                    'product_unit_id' => $saleItem['product_unit_id'],
+                    'unit_name' => $saleItem['unit_name'],
+                    'unit_conversion' => $saleItem['unit_conversion'],
+                    'base_quantity' => $saleItem['base_quantity'],
                     'line_total' => $lineTotal,
+                    'inventory_serial_ids' => $item['inventory_serial_ids'],
                 ];
             }
 
             $stockProducts = $this->lockAndValidateStock($team, $stockRequirements);
+            $serialsByProduct = $this->lockAndValidateSerials($team, $stockProducts, $stockRequirements, $items);
             $voucher = $this->resolveVoucher($team, $data['voucher_code'] ?? null, $subtotal);
             $customer = $this->resolveCustomer($team, $data['customer_id'] ?? null);
             $diningTable = $this->resolveDiningTable($team, $data['dining_table_id'] ?? null);
@@ -160,7 +173,18 @@ class CreatePosTransactionAction
             }
 
             foreach ($items as $item) {
-                $transaction->items()->create($this->transactionItemPayload($item));
+                $transactionItem = $transaction->items()->create($this->transactionItemPayload($item));
+                foreach ($item['inventory_serial_ids'] as $serialId) {
+                    $serial = $serialsByProduct->get($item['product_id'])?->get($serialId);
+                    if (! $serial) {
+                        continue;
+                    }
+                    $transactionItem->serials()->create([
+                        'inventory_serial_id' => $serial->id,
+                        'serial_number' => $serial->serial_number,
+                    ]);
+                    $serial->update(['status' => InventorySerial::STATUS_SOLD]);
+                }
             }
 
             foreach ($stockRequirements as $productId => $quantity) {
@@ -247,10 +271,14 @@ class CreatePosTransactionAction
     {
         $payload = [
             'product_id' => $item['product_id'],
+            'product_unit_id' => $item['product_unit_id'],
             'product_name' => $item['name'],
             'product_sku' => $item['sku'],
+            'unit_name' => $item['unit_name'],
+            'unit_conversion' => $item['unit_conversion'],
             'unit_price' => $item['unit_price'],
             'quantity' => $item['quantity'],
+            'base_quantity' => $item['base_quantity'],
             'discount_total' => 0,
             'line_total' => $item['line_total'],
         ];
@@ -288,6 +316,17 @@ class CreatePosTransactionAction
             ->keyBy('id');
     }
 
+    private function resolveUnits(Team $team, Collection $cartItems): Collection
+    {
+        $ids = $cartItems->where('item_type', TransactionItem::ITEM_TYPE_PRODUCT)->pluck('unit_id')->filter();
+
+        return ProductUnit::query()
+            ->where('team_id', $team->id)
+            ->whereIn('id', $ids)
+            ->get()
+            ->keyBy('id');
+    }
+
     private function resolvePromotions(Team $team, Collection $cartItems): Collection
     {
         $ids = $cartItems
@@ -304,7 +343,7 @@ class CreatePosTransactionAction
             ->keyBy('id');
     }
 
-    private function buildProductLine(Collection $products, array $item): array
+    private function buildProductLine(Collection $products, Collection $units, array $item): array
     {
         /** @var Product|null $product */
         $product = $products->get($item['item_id']);
@@ -321,12 +360,24 @@ class CreatePosTransactionAction
             ]);
         }
 
+        /** @var ProductUnit|null $unit */
+        $unit = $item['unit_id'] ? $units->get($item['unit_id']) : null;
+        if ($item['unit_id'] && (! $unit || $unit->product_id !== $product->id || ! $unit->is_active)) {
+            throw ValidationException::withMessages(['items' => "Satuan penjualan '{$product->name}' tidak valid."]);
+        }
+
+        $conversion = $unit?->conversion_quantity ?? 1;
+
         return [
             'product_id' => $product->id,
+            'product_unit_id' => $unit?->id,
             'name' => $product->name,
             'sku' => $product->sku,
-            'unit_price' => (float) $product->price,
-            'stock_requirements' => [$product->id => $item['quantity']],
+            'unit_name' => $unit?->abbreviation ?? $product->base_unit,
+            'unit_conversion' => $conversion,
+            'base_quantity' => $item['quantity'] * $conversion,
+            'unit_price' => (float) ($unit?->selling_price ?? $product->price),
+            'stock_requirements' => [$product->id => $item['quantity'] * $conversion],
         ];
     }
 
@@ -367,8 +418,12 @@ class CreatePosTransactionAction
 
         return [
             'product_id' => null,
+            'product_unit_id' => null,
             'name' => $package->name,
             'sku' => $package->sku,
+            'unit_name' => 'paket',
+            'unit_conversion' => 1,
+            'base_quantity' => $item['quantity'],
             'unit_price' => (float) $package->base_price,
             'stock_requirements' => $requirements,
         ];
@@ -426,8 +481,12 @@ class CreatePosTransactionAction
 
         return [
             'product_id' => null,
+            'product_unit_id' => null,
             'name' => $promotion->name,
             'sku' => 'PROMO-'.$promotion->id,
+            'unit_name' => 'promo',
+            'unit_conversion' => 1,
+            'base_quantity' => $item['quantity'],
             'unit_price' => $unitPrice,
             'stock_requirements' => $requirements,
         ];
@@ -469,6 +528,46 @@ class CreatePosTransactionAction
         }
 
         return $products;
+    }
+
+    private function lockAndValidateSerials(Team $team, Collection $products, array $stockRequirements, array $items): Collection
+    {
+        $selectedByProduct = collect($items)
+            ->filter(fn (array $item) => $item['product_id'] !== null)
+            ->groupBy('product_id')
+            ->map(fn (Collection $rows) => $rows->pluck('inventory_serial_ids')->flatten()->map(fn ($id) => (int) $id)->unique()->values());
+        $resolved = collect();
+
+        foreach ($stockRequirements as $productId => $quantity) {
+            $product = $products->get($productId);
+            if (! $product->tracks_serials) {
+                continue;
+            }
+
+            $selectedIds = $selectedByProduct->get($productId, collect());
+            if ($selectedIds->count() !== $quantity) {
+                throw ValidationException::withMessages([
+                    'items' => "Pilih tepat {$quantity} nomor serial untuk '{$product->name}'.",
+                ]);
+            }
+
+            $serials = InventorySerial::query()
+                ->where('team_id', $team->id)
+                ->where('product_id', $productId)
+                ->where('status', InventorySerial::STATUS_IN_STOCK)
+                ->whereIn('id', $selectedIds)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            if ($serials->count() !== $quantity) {
+                throw ValidationException::withMessages(['items' => "Serial '{$product->name}' tidak valid atau sudah tidak tersedia."]);
+            }
+
+            $resolved->put($productId, $serials);
+        }
+
+        return $resolved;
     }
 
     private function resolveVoucher(Team $team, ?string $code, float $subtotal): ?Voucher

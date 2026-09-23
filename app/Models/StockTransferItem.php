@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class StockTransferItem extends Model
 {
@@ -24,5 +25,15 @@ class StockTransferItem extends Model
     public function toProduct(): BelongsTo
     {
         return $this->belongsTo(Product::class, 'to_product_id');
+    }
+
+    public function batchAllocations(): HasMany
+    {
+        return $this->hasMany(StockTransferBatchAllocation::class);
+    }
+
+    public function serials(): HasMany
+    {
+        return $this->hasMany(StockTransferSerial::class);
     }
 }

@@ -10,7 +10,8 @@ import {
     Search,
     Trash2,
 } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import CatalogImageInput from '@/components/catalog-image-input';
 
 // ─── Types ───────────────────────────────────────────────
 interface Category {
@@ -18,11 +19,36 @@ interface Category {
     name: string;
 }
 
+interface ProductUnit {
+    id?: number;
+    name: string;
+    abbreviation: string;
+    conversion_quantity: number;
+    barcode: string | null;
+    selling_price: string;
+    is_active: boolean;
+}
+
+interface ParentProduct {
+    id: number;
+    name: string;
+    sku: string;
+}
+
 interface Product {
     id: number;
     name: string;
     sku: string;
+    barcode: string | null;
+    base_unit: string;
+    parent_product_id: number | null;
+    variant_name: string | null;
+    parent?: ParentProduct | null;
+    units: ProductUnit[];
+    tracks_batches: boolean;
+    tracks_serials: boolean;
     description: string | null;
+    image_url: string | null;
     price: string;
     cost: string | null;
     stock: number;
@@ -57,6 +83,7 @@ interface Props {
     products: PaginatedProducts;
     recentActivity: ProductActivity[];
     categories: Category[];
+    parentProducts: ParentProduct[];
     teamSlug: string;
     canCreate: boolean;
     canUpdate: boolean;
@@ -196,6 +223,17 @@ function Modal({
     children: React.ReactNode;
     maxWidth?: string;
 }) {
+    useEffect(() => {
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+        };
+        document.addEventListener('keydown', closeOnEscape);
+
+        return () => document.removeEventListener('keydown', closeOnEscape);
+    }, [onClose]);
+
     return (
         <div
             style={{
@@ -203,14 +241,17 @@ function Modal({
                 inset: 0,
                 zIndex: 50,
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: 'flex-start',
                 justifyContent: 'center',
-                padding: '16px',
+                padding: '24px 16px',
+                overflowY: 'auto',
             }}
         >
             <div
+                role="dialog"
+                aria-modal="true"
                 style={{
-                    position: 'absolute',
+                    position: 'fixed',
                     inset: 0,
                     backgroundColor: 'rgba(0,0,0,0.4)',
                     backdropFilter: 'blur(4px)',
@@ -227,6 +268,8 @@ function Modal({
                     border: '1px solid var(--border)',
                     boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
                     padding: '24px',
+                    marginTop: '20px',
+                    marginBottom: '20px',
                 }}
             >
                 {children}
@@ -299,30 +342,188 @@ const selectStyle: React.CSSProperties = {
     outline: 'none',
 };
 
+function ProductUnitsEditor({
+    units,
+    baseUnit,
+    disabled,
+    errors,
+    onChange,
+}: {
+    units: ProductUnit[];
+    baseUnit: string;
+    disabled: boolean;
+    errors: Record<string, string>;
+    onChange: (units: ProductUnit[]) => void;
+}) {
+    const update = (index: number, values: Partial<ProductUnit>) =>
+        onChange(
+            units.map((unit, current) =>
+                current === index ? { ...unit, ...values } : unit,
+            ),
+        );
+
+    return (
+        <div className="space-y-3 rounded-md border p-3">
+            <div className="flex items-center justify-between gap-3">
+                <div>
+                    <div className="text-sm font-semibold">
+                        Satuan penjualan
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        Stok tetap dihitung dalam {baseUnit || 'satuan dasar'}.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    className="min-h-11 rounded-md border px-3 text-sm font-medium"
+                    disabled={disabled}
+                    onClick={() =>
+                        onChange([
+                            ...units,
+                            {
+                                name: '',
+                                abbreviation: '',
+                                conversion_quantity: 2,
+                                barcode: '',
+                                selling_price: '',
+                                is_active: true,
+                            },
+                        ])
+                    }
+                >
+                    Tambah satuan
+                </button>
+            </div>
+            {units.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                    Belum ada satuan alternatif.
+                </p>
+            ) : (
+                units.map((unit, index) => (
+                    <div
+                        key={unit.id ?? index}
+                        className="grid gap-2 rounded-md bg-muted/50 p-3 sm:grid-cols-2"
+                    >
+                        <input
+                            aria-label={`Nama satuan ${index + 1}`}
+                            value={unit.name}
+                            onChange={(e) =>
+                                update(index, { name: e.target.value })
+                            }
+                            placeholder="Nama: Dus"
+                            style={inputStyle(!!errors[`units.${index}.name`])}
+                            disabled={disabled}
+                        />
+                        <input
+                            aria-label={`Singkatan satuan ${index + 1}`}
+                            value={unit.abbreviation}
+                            onChange={(e) =>
+                                update(index, { abbreviation: e.target.value })
+                            }
+                            placeholder="Singkatan: dus"
+                            style={inputStyle(
+                                !!errors[`units.${index}.abbreviation`],
+                            )}
+                            disabled={disabled}
+                        />
+                        <input
+                            aria-label={`Konversi satuan ${index + 1}`}
+                            type="number"
+                            min={2}
+                            value={unit.conversion_quantity}
+                            onChange={(e) =>
+                                update(index, {
+                                    conversion_quantity: Number(e.target.value),
+                                })
+                            }
+                            placeholder={`Isi dalam ${baseUnit || 'unit'}`}
+                            style={inputStyle(
+                                !!errors[`units.${index}.conversion_quantity`],
+                            )}
+                            disabled={disabled}
+                        />
+                        <input
+                            aria-label={`Harga satuan ${index + 1}`}
+                            type="number"
+                            min={0}
+                            value={unit.selling_price}
+                            onChange={(e) =>
+                                update(index, { selling_price: e.target.value })
+                            }
+                            placeholder="Harga jual"
+                            style={inputStyle(
+                                !!errors[`units.${index}.selling_price`],
+                            )}
+                            disabled={disabled}
+                        />
+                        <input
+                            aria-label={`Barcode satuan ${index + 1}`}
+                            value={unit.barcode ?? ''}
+                            onChange={(e) =>
+                                update(index, { barcode: e.target.value })
+                            }
+                            placeholder="Barcode satuan (opsional)"
+                            style={inputStyle(
+                                !!errors[`units.${index}.barcode`],
+                            )}
+                            disabled={disabled}
+                        />
+                        <button
+                            type="button"
+                            className="min-h-11 rounded-md border px-3 text-sm"
+                            disabled={disabled}
+                            onClick={() =>
+                                onChange(
+                                    units.filter(
+                                        (_, current) => current !== index,
+                                    ),
+                                )
+                            }
+                        >
+                            Hapus satuan
+                        </button>
+                    </div>
+                ))
+            )}
+        </div>
+    );
+}
+
 // ─── Create Modal ────────────────────────────────────────
 function CreateProductModal({
     onClose,
     categories,
     teamSlug,
+    parentProducts,
 }: {
     onClose: () => void;
     categories: Category[];
     teamSlug: string;
+    parentProducts: ParentProduct[];
 }) {
     const { data, setData, post, errors, processing, reset } = useForm({
         category_id: '',
         sku: '',
+        barcode: '',
+        base_unit: 'pcs',
+        parent_product_id: '',
+        variant_name: '',
         name: '',
         description: '',
+        image: null as File | null,
         price: '',
         cost: '',
         stock: '0',
         min_stock: '0',
+        tracks_batches: false,
+        tracks_serials: false,
+        units: [] as ProductUnit[],
         is_active: true,
     });
 
     function submit() {
         post(buildUrl('/products', teamSlug), {
+            forceFormData: true,
             onSuccess: () => {
                 reset();
                 onClose();
@@ -331,7 +532,7 @@ function CreateProductModal({
     }
 
     return (
-        <Modal onClose={onClose} maxWidth="480px">
+        <Modal onClose={onClose} maxWidth="720px">
             <div
                 style={{
                     display: 'flex',
@@ -354,6 +555,7 @@ function CreateProductModal({
                 >
                     <Package size={18} />
                 </div>
+
                 <div>
                     <h3
                         style={{
@@ -414,6 +616,101 @@ function CreateProductModal({
                     </Field>
                 </div>
 
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Barcode" error={(errors as any).barcode}>
+                        <input
+                            value={data.barcode}
+                            onChange={(e) => setData('barcode', e.target.value)}
+                            placeholder="Scan atau ketik barcode"
+                            style={inputStyle(!!errors.barcode)}
+                            disabled={processing}
+                        />
+                    </Field>
+                    <Field
+                        label="Satuan dasar"
+                        error={(errors as any).base_unit}
+                    >
+                        <input
+                            value={data.base_unit}
+                            onChange={(e) =>
+                                setData('base_unit', e.target.value)
+                            }
+                            placeholder="pcs"
+                            style={inputStyle(!!errors.base_unit)}
+                            disabled={processing}
+                        />
+                    </Field>
+                    <Field label="Produk induk (opsional)">
+                        <select
+                            value={data.parent_product_id}
+                            onChange={(e) =>
+                                setData('parent_product_id', e.target.value)
+                            }
+                            style={selectStyle}
+                            disabled={processing}
+                        >
+                            <option value="">Produk utama</option>
+                            {parentProducts.map((parent) => (
+                                <option key={parent.id} value={parent.id}>
+                                    {parent.name} ({parent.sku})
+                                </option>
+                            ))}
+                        </select>
+                    </Field>
+                    <Field
+                        label="Nama varian"
+                        error={(errors as any).variant_name}
+                    >
+                        <input
+                            value={data.variant_name}
+                            onChange={(e) =>
+                                setData('variant_name', e.target.value)
+                            }
+                            placeholder="Contoh: Merah / XL"
+                            style={inputStyle(!!errors.variant_name)}
+                            disabled={processing || !data.parent_product_id}
+                        />
+                    </Field>
+                </div>
+
+                <ProductUnitsEditor
+                    units={data.units}
+                    baseUnit={data.base_unit}
+                    disabled={processing}
+                    errors={errors as Record<string, string>}
+                    onChange={(units) => setData('units', units)}
+                />
+
+                <label className="flex min-h-11 items-center gap-3 rounded-md border px-3 text-sm">
+                    <input
+                        type="checkbox"
+                        checked={data.tracks_batches}
+                        onChange={(e) =>
+                            setData('tracks_batches', e.target.checked)
+                        }
+                        disabled={processing}
+                        className="size-5 accent-foreground"
+                    />
+                    Lacak nomor batch dan tanggal kedaluwarsa
+                </label>
+
+                <label className="flex min-h-11 items-center gap-3 rounded-md border px-3 text-sm">
+                    <input
+                        type="checkbox"
+                        checked={data.tracks_serials}
+                        onChange={(e) =>
+                            setData({
+                                ...data,
+                                tracks_serials: e.target.checked,
+                                stock: e.target.checked ? '0' : data.stock,
+                            })
+                        }
+                        disabled={processing}
+                        className="size-5 accent-foreground"
+                    />
+                    Lacak nomor serial unik per unit
+                </label>
+
                 <Field label="Deskripsi">
                     <textarea
                         value={data.description}
@@ -430,6 +727,15 @@ function CreateProductModal({
                         disabled={processing}
                     />
                 </Field>
+
+                <CatalogImageInput
+                    id="create-product-image"
+                    label="Foto produk"
+                    error={(errors as any).image}
+                    disabled={processing}
+                    onFileChange={(file) => setData('image', file)}
+                    onRemoveImageChange={() => undefined}
+                />
 
                 <Field label="Kategori">
                     <select
@@ -483,14 +789,21 @@ function CreateProductModal({
                         gap: '12px',
                     }}
                 >
-                    <Field label="Stok" error={(errors as any).stock}>
+                    <Field
+                        label={
+                            data.tracks_serials
+                                ? 'Stok (diisi lewat penerimaan PO)'
+                                : 'Stok'
+                        }
+                        error={(errors as any).stock}
+                    >
                         <input
                             type="number"
                             value={data.stock}
                             onChange={(e) => setData('stock', e.target.value)}
                             placeholder="0"
                             style={inputStyle(!!errors.stock)}
-                            disabled={processing}
+                            disabled={processing || data.tracks_serials}
                         />
                     </Field>
                     <Field label="Stok Minimum">
@@ -595,34 +908,47 @@ function EditProductModal({
     onClose,
     categories,
     teamSlug,
+    parentProducts,
 }: {
     product: Product | null;
     onClose: () => void;
     categories: Category[];
     teamSlug: string;
+    parentProducts: ParentProduct[];
 }) {
-    const { data, setData, put, errors, processing } = useForm({
+    const { data, setData, post, errors, processing } = useForm({
+        _method: 'put',
         category_id: product?.category_id || '',
         sku: product?.sku || '',
+        barcode: product?.barcode || '',
+        base_unit: product?.base_unit || 'pcs',
+        parent_product_id: product?.parent_product_id?.toString() || '',
+        variant_name: product?.variant_name || '',
         name: product?.name || '',
         description: product?.description || '',
+        image: null as File | null,
+        remove_image: false,
         price: product?.price || '',
         cost: product?.cost || '',
         stock: product?.stock.toString() || '0',
         min_stock: product?.min_stock.toString() || '0',
+        tracks_batches: product?.tracks_batches ?? false,
+        tracks_serials: product?.tracks_serials ?? false,
+        units: product?.units ?? [],
         is_active: product?.is_active ?? true,
     });
 
     function submit() {
         if (product) {
-            put(buildUrl(`/products/${product.id}`, teamSlug), {
+            post(buildUrl(`/products/${product.id}`, teamSlug), {
+                forceFormData: true,
                 onSuccess: onClose,
             });
         }
     }
 
     return (
-        <Modal onClose={onClose} maxWidth="480px">
+        <Modal onClose={onClose} maxWidth="720px">
             <div
                 style={{
                     display: 'flex',
@@ -645,6 +971,7 @@ function EditProductModal({
                 >
                     <Edit2 size={18} />
                 </div>
+
                 <div>
                     <h3
                         style={{
@@ -702,6 +1029,96 @@ function EditProductModal({
                     </Field>
                 </div>
 
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Barcode" error={(errors as any).barcode}>
+                        <input
+                            value={data.barcode}
+                            onChange={(e) => setData('barcode', e.target.value)}
+                            style={inputStyle(!!errors.barcode)}
+                            disabled={processing}
+                        />
+                    </Field>
+                    <Field
+                        label="Satuan dasar"
+                        error={(errors as any).base_unit}
+                    >
+                        <input
+                            value={data.base_unit}
+                            onChange={(e) =>
+                                setData('base_unit', e.target.value)
+                            }
+                            style={inputStyle(!!errors.base_unit)}
+                            disabled={processing}
+                        />
+                    </Field>
+                    <Field label="Produk induk (opsional)">
+                        <select
+                            value={data.parent_product_id}
+                            onChange={(e) =>
+                                setData('parent_product_id', e.target.value)
+                            }
+                            style={selectStyle}
+                            disabled={processing}
+                        >
+                            <option value="">Produk utama</option>
+                            {parentProducts
+                                .filter((parent) => parent.id !== product?.id)
+                                .map((parent) => (
+                                    <option key={parent.id} value={parent.id}>
+                                        {parent.name} ({parent.sku})
+                                    </option>
+                                ))}
+                        </select>
+                    </Field>
+                    <Field
+                        label="Nama varian"
+                        error={(errors as any).variant_name}
+                    >
+                        <input
+                            value={data.variant_name}
+                            onChange={(e) =>
+                                setData('variant_name', e.target.value)
+                            }
+                            style={inputStyle(!!errors.variant_name)}
+                            disabled={processing || !data.parent_product_id}
+                        />
+                    </Field>
+                </div>
+
+                <ProductUnitsEditor
+                    units={data.units}
+                    baseUnit={data.base_unit}
+                    disabled={processing}
+                    errors={errors as Record<string, string>}
+                    onChange={(units) => setData('units', units)}
+                />
+
+                <label className="flex min-h-11 items-center gap-3 rounded-md border px-3 text-sm">
+                    <input
+                        type="checkbox"
+                        checked={data.tracks_batches}
+                        onChange={(e) =>
+                            setData('tracks_batches', e.target.checked)
+                        }
+                        disabled={processing}
+                        className="size-5 accent-foreground"
+                    />
+                    Lacak nomor batch dan tanggal kedaluwarsa
+                </label>
+
+                <label className="flex min-h-11 items-center gap-3 rounded-md border px-3 text-sm">
+                    <input
+                        type="checkbox"
+                        checked={data.tracks_serials}
+                        onChange={(e) =>
+                            setData('tracks_serials', e.target.checked)
+                        }
+                        disabled={processing}
+                        className="size-5 accent-foreground"
+                    />
+                    Lacak nomor serial unik per unit
+                </label>
+
                 <Field label="Deskripsi">
                     <textarea
                         value={data.description}
@@ -717,6 +1134,19 @@ function EditProductModal({
                         disabled={processing}
                     />
                 </Field>
+
+                <CatalogImageInput
+                    id={`edit-product-image-${product?.id ?? 'unknown'}`}
+                    label="Foto produk"
+                    currentImageUrl={product?.image_url}
+                    removeImage={data.remove_image}
+                    error={(errors as any).image}
+                    disabled={processing}
+                    onFileChange={(file) => setData('image', file)}
+                    onRemoveImageChange={(remove) =>
+                        setData('remove_image', remove)
+                    }
+                />
 
                 <Field label="Kategori">
                     <select
@@ -768,13 +1198,15 @@ function EditProductModal({
                         gap: '12px',
                     }}
                 >
-                    <Field label="Stok" error={(errors as any).stock}>
+                    <Field
+                        label="Stok (kelola lewat Manajemen Stok)"
+                        error={(errors as any).stock}
+                    >
                         <input
                             type="number"
                             value={data.stock}
-                            onChange={(e) => setData('stock', e.target.value)}
                             style={inputStyle(!!errors.stock)}
-                            disabled={processing}
+                            disabled
                         />
                     </Field>
                     <Field label="Stok Minimum">
@@ -993,6 +1425,7 @@ export default function ProductsIndex({
     products: initialProducts,
     recentActivity,
     categories,
+    parentProducts,
     teamSlug,
     canCreate,
     canUpdate,
@@ -1011,7 +1444,9 @@ export default function ProductsIndex({
         return initialProducts.data.filter((p) =>
             keyword
                 ? p.name.toLowerCase().includes(keyword) ||
-                  p.sku.toLowerCase().includes(keyword)
+                  p.sku.toLowerCase().includes(keyword) ||
+                  p.barcode?.toLowerCase().includes(keyword) ||
+                  p.variant_name?.toLowerCase().includes(keyword)
                 : true,
         );
     }, [initialProducts.data, search]);
@@ -1397,33 +1832,84 @@ export default function ProductsIndex({
                                                     color: 'var(--card-foreground)',
                                                 }}
                                             >
-                                                <div>
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '10px',
+                                                    }}
+                                                >
                                                     <div
                                                         style={{
-                                                            fontWeight: 500,
-                                                            marginBottom: '2px',
+                                                            width: '40px',
+                                                            height: '40px',
+                                                            flexShrink: 0,
+                                                            overflow: 'hidden',
+                                                            borderRadius: '6px',
+                                                            backgroundColor:
+                                                                'var(--muted)',
+                                                            display: 'flex',
+                                                            alignItems:
+                                                                'center',
+                                                            justifyContent:
+                                                                'center',
+                                                            color: 'var(--muted-foreground)',
                                                         }}
                                                     >
-                                                        {product.name}
+                                                        {product.image_url ? (
+                                                            <img
+                                                                src={
+                                                                    product.image_url
+                                                                }
+                                                                alt=""
+                                                                loading="lazy"
+                                                                style={{
+                                                                    width: '100%',
+                                                                    height: '100%',
+                                                                    objectFit:
+                                                                        'cover',
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <Package
+                                                                size={17}
+                                                                aria-hidden="true"
+                                                            />
+                                                        )}
                                                     </div>
-                                                    {product.description && (
+                                                    <div>
                                                         <div
                                                             style={{
-                                                                fontSize:
-                                                                    '11px',
-                                                                color: 'var(--muted-foreground)',
+                                                                fontWeight: 500,
+                                                                marginBottom:
+                                                                    '2px',
                                                             }}
                                                         >
-                                                            {product.description.substring(
-                                                                0,
-                                                                50,
-                                                            )}
-                                                            {product.description
-                                                                .length > 50
-                                                                ? '...'
+                                                            {product.name}
+                                                            {product.variant_name
+                                                                ? ` · ${product.variant_name}`
                                                                 : ''}
                                                         </div>
-                                                    )}
+                                                        {product.description && (
+                                                            <div
+                                                                style={{
+                                                                    fontSize:
+                                                                        '11px',
+                                                                    color: 'var(--muted-foreground)',
+                                                                }}
+                                                            >
+                                                                {product.description.substring(
+                                                                    0,
+                                                                    50,
+                                                                )}
+                                                                {product
+                                                                    .description
+                                                                    .length > 50
+                                                                    ? '...'
+                                                                    : ''}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td
@@ -1466,7 +1952,8 @@ export default function ProductsIndex({
                                                         product.min_stock,
                                                     )}
                                                 >
-                                                    {product.stock} unit
+                                                    {product.stock}{' '}
+                                                    {product.base_unit}
                                                 </Badge>
                                             </td>
                                             <td
@@ -1780,6 +2267,7 @@ export default function ProductsIndex({
                 <CreateProductModal
                     onClose={() => setShowCreate(false)}
                     categories={categories}
+                    parentProducts={parentProducts}
                     teamSlug={teamSlug}
                 />
             )}
@@ -1788,6 +2276,7 @@ export default function ProductsIndex({
                     product={editingProduct}
                     onClose={() => setEditingProduct(null)}
                     categories={categories}
+                    parentProducts={parentProducts}
                     teamSlug={teamSlug}
                 />
             )}

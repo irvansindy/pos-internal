@@ -17,7 +17,7 @@
     <table>
         @foreach ($transaction->items as $item)
             <tr><td colspan="2" class="strong">{{ $item->product_name }}</td></tr>
-            <tr><td>{{ $item->quantity }} x Rp{{ number_format((float) $item->unit_price, 0, ',', '.') }}</td><td class="right">Rp{{ number_format((float) $item->line_total, 0, ',', '.') }}</td></tr>
+            <tr><td>{{ $item->quantity }} {{ $item->unit_name ?: 'unit' }} x Rp{{ number_format((float) $item->unit_price, 0, ',', '.') }}</td><td class="right">Rp{{ number_format((float) $item->line_total, 0, ',', '.') }}</td></tr>
         @endforeach
     </table>
     <div class="line"></div>

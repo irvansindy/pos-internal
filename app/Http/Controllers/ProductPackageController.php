@@ -32,7 +32,7 @@ class ProductPackageController extends Controller
         setPermissionsTeamId($team->id);
 
         $packages = $team->productPackages()
-            ->with(['category:id,name', 'items.product:id,name,sku', 'addonGroups.options.product:id,name'])
+            ->with(['category:id,name', 'items.product:id,name,sku,image_path', 'addonGroups.options.product:id,name,image_path'])
             ->withCount('items')
             ->orderBy('name')
             ->paginate(15);
@@ -52,7 +52,7 @@ class ProductPackageController extends Controller
         $products = $team->products()
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name', 'sku', 'price']);
+            ->get(['id', 'name', 'sku', 'price', 'image_path']);
 
         return Inertia::render('product-packages/index', [
             'packages' => $packages,
@@ -171,7 +171,7 @@ class ProductPackageController extends Controller
         setPermissionsTeamId($team->id);
 
         $package = $this->resolvePackage($request)
-            ->load(['category:id,name', 'items.product:id,name,sku,price', 'addonGroups.defaultProduct:id,name', 'addonGroups.options.product:id,name,price']);
+            ->load(['category:id,name', 'items.product:id,name,sku,price,image_path', 'addonGroups.defaultProduct:id,name,image_path', 'addonGroups.options.product:id,name,price,image_path']);
 
         return Inertia::render('product-packages/show', [
             'package' => $package,
@@ -219,7 +219,7 @@ class ProductPackageController extends Controller
 
     private function activityFields(): array
     {
-        return ['category_id', 'sku', 'name', 'description', 'base_price', 'is_active'];
+        return ['category_id', 'sku', 'name', 'description', 'image_path', 'base_price', 'is_active'];
     }
 
     private function buildChanges(array $before, array $after): array

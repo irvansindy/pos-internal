@@ -30,7 +30,7 @@ export default function ThemeToggle({
     return (
         <div
             className={cn(
-                'inline-flex rounded-full bg-neutral-100 p-1 dark:bg-neutral-800',
+                'inline-flex rounded-full bg-neutral-100 p-1 dark:bg-[#1C2024]',
                 className,
             )}
             role="group"
@@ -52,8 +52,8 @@ export default function ThemeToggle({
                             'flex items-center justify-center gap-2 rounded-full transition-colors',
                             compact ? 'h-9 w-9 p-0' : 'px-3.5 py-1.5',
                             isActive
-                                ? 'bg-white text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
-                                : 'text-neutral-500 hover:bg-neutral-200/60 hover:text-black dark:text-neutral-400 dark:hover:bg-neutral-700/60',
+                                ? 'bg-white text-neutral-900 shadow-xs dark:bg-[#40474E] dark:text-[#F4F1E8]'
+                                : 'text-neutral-500 hover:bg-neutral-200/60 hover:text-black dark:text-[#AEB4B9] dark:hover:bg-[#252A2F] dark:hover:text-[#F4F1E8]',
                         )}
                     >
                         <Icon className={compact ? 'h-4 w-4' : 'h-4 w-4'} />

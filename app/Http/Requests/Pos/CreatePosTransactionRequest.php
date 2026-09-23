@@ -30,6 +30,9 @@ class CreatePosTransactionRequest extends FormRequest
             'items.*.item_id' => ['required_without:items.*.product_id', 'integer', 'min:1'],
             'items.*.product_id' => ['required_without:items.*.item_id', 'integer', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.unit_id' => ['nullable', 'integer'],
+            'items.*.inventory_serial_ids' => ['nullable', 'array'],
+            'items.*.inventory_serial_ids.*' => ['integer', 'distinct'],
         ];
     }
 

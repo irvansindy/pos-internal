@@ -162,6 +162,21 @@ class Team extends Model
         return $this->hasMany(PurchaseOrder::class);
     }
 
+    public function warehouses(): HasMany
+    {
+        return $this->hasMany(Warehouse::class);
+    }
+
+    public function purchaseInvoices(): HasMany
+    {
+        return $this->hasMany(PurchaseInvoice::class);
+    }
+
+    public function supplierReturns(): HasMany
+    {
+        return $this->hasMany(SupplierReturn::class);
+    }
+
     public function stockOpnames(): HasMany
     {
         return $this->hasMany(StockOpname::class);

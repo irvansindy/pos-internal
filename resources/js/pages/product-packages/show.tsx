@@ -22,6 +22,7 @@ interface Product {
     name: string;
     sku: string;
     price: string;
+    image_url: string | null;
 }
 
 interface PackageItem {
@@ -55,6 +56,7 @@ interface PackageDetail {
     sku: string;
     name: string;
     description: string | null;
+    image_url: string | null;
     base_price: string;
     is_active: boolean;
     category_id: number | null;
@@ -383,8 +385,8 @@ export default function ProductPackageShow({
                         {/* Icon */}
                         <div
                             style={{
-                                width: '56px',
-                                height: '56px',
+                                width: '80px',
+                                height: '80px',
                                 borderRadius: '14px',
                                 backgroundColor: 'hsl(214 100% 95%)',
                                 color: 'hsl(214 100% 45%)',
@@ -392,9 +394,22 @@ export default function ProductPackageShow({
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 flexShrink: 0,
+                                overflow: 'hidden',
                             }}
                         >
-                            <Box size={26} />
+                            {pkg.image_url ? (
+                                <img
+                                    src={pkg.image_url}
+                                    alt=""
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'cover',
+                                    }}
+                                />
+                            ) : (
+                                <Box size={26} aria-hidden="true" />
+                            )}
                         </div>
 
                         {/* Info */}
@@ -635,6 +650,20 @@ export default function ProductPackageShow({
                                         backgroundColor: 'var(--muted)',
                                     }}
                                 >
+                                    {item.product.image_url && (
+                                        <img
+                                            src={item.product.image_url}
+                                            alt=""
+                                            loading="lazy"
+                                            style={{
+                                                width: '40px',
+                                                height: '40px',
+                                                flexShrink: 0,
+                                                borderRadius: '6px',
+                                                objectFit: 'cover',
+                                            }}
+                                        />
+                                    )}
                                     {/* Index number */}
                                     <span
                                         style={{

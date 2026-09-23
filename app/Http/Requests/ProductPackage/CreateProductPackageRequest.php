@@ -21,6 +21,7 @@ class CreateProductPackageRequest extends FormRequest
             'sku' => ['required', 'string', 'max:100', Rule::unique('product_packages', 'sku')->where('team_id', $teamId)],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'base_price' => ['required', 'numeric', 'min:0'],
             'is_active' => ['boolean'],
 
@@ -61,6 +62,9 @@ class CreateProductPackageRequest extends FormRequest
             'addon_groups.*.options.*.product_id.required' => 'Produk pada opsi addon wajib dipilih.',
             'addon_groups.*.options.*.extra_charge.required' => 'Biaya tambahan addon wajib diisi.',
             'addon_groups.*.options.*.extra_charge.min' => 'Biaya tambahan tidak boleh negatif.',
+            'image.image' => 'File foto paket tidak valid.',
+            'image.mimes' => 'Foto paket harus berformat JPG, PNG, atau WebP.',
+            'image.max' => 'Ukuran foto paket maksimal 2 MB.',
         ];
     }
 }

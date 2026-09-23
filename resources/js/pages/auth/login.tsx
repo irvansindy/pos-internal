@@ -18,7 +18,7 @@ type Props = {
 };
 
 const fieldClass =
-    'border-[#65756d] bg-white focus-visible:border-[#123c30] focus-visible:ring-[#123c30] dark:border-[#7d8e85] dark:bg-[#0d1512] dark:focus-visible:border-[#edf2ec] dark:focus-visible:ring-[#edf2ec]';
+    'border-[#65756d] bg-white focus-visible:border-[#123c30] focus-visible:ring-[#123c30] dark:border-[#68717A] dark:bg-[#15181B] dark:focus-visible:border-[#FF6B3D] dark:focus-visible:ring-[#FF6B3D]';
 
 export default function Login({
     status,
@@ -31,7 +31,7 @@ export default function Login({
 
             {status && (
                 <div
-                    className="mb-6 border border-[#65756d] bg-[#e4ece6] px-4 py-3 text-sm font-medium text-[#123c30] dark:border-[#7d8e85] dark:bg-[#1d2b24] dark:text-[#dce8e0]"
+                    className="mb-6 border border-[#65756d] bg-[#e4ece6] px-4 py-3 text-sm font-medium text-[#123c30] dark:border-[#68717A] dark:bg-[#252A2F] dark:text-[#F4F1E8]"
                     role="status"
                 >
                     {status}
@@ -75,7 +75,7 @@ export default function Login({
                                     {canResetPassword && (
                                         <TextLink
                                             href={request()}
-                                            className="text-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#123c30] dark:focus-visible:outline-[#f3f1e9]"
+                                            className="text-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#123c30] dark:focus-visible:outline-[#FF6B3D]"
                                         >
                                             Lupa kata sandi?
                                         </TextLink>
@@ -105,14 +105,19 @@ export default function Login({
                                 <Checkbox
                                     id="remember"
                                     name="remember"
-                                    className="size-5 border-[#65756d] focus-visible:ring-[#123c30] dark:border-[#7d8e85] dark:focus-visible:ring-[#edf2ec]"
+                                    className="size-5 rounded-[4px] border-[#65756d] bg-transparent shadow-none hover:border-[#b9472d] focus-visible:ring-[#123c30]/30 data-[state=checked]:border-[#b9472d] data-[state=checked]:bg-[#b9472d] data-[state=checked]:text-white dark:border-[#68717A] dark:hover:border-[#FF6B3D] dark:focus-visible:ring-[#FF6B3D]/40 dark:data-[state=checked]:border-[#FF6B3D] dark:data-[state=checked]:bg-[#FF6B3D] dark:data-[state=checked]:text-[#101214]"
                                 />
-                                <Label htmlFor="remember">Ingat saya</Label>
+                                <Label
+                                    htmlFor="remember"
+                                    className="flex min-h-11 flex-1 cursor-pointer items-center"
+                                >
+                                    Ingat saya
+                                </Label>
                             </div>
 
                             <Button
                                 type="submit"
-                                className="mt-1 min-h-12 w-full bg-[#b9472d] font-semibold text-white hover:bg-[#963820] focus-visible:border-[#123c30] focus-visible:ring-[#123c30] dark:focus-visible:border-[#edf2ec] dark:focus-visible:ring-[#edf2ec]"
+                                className="mt-1 min-h-12 w-full bg-[#b9472d] font-semibold text-white hover:bg-[#963820] focus-visible:border-[#123c30] focus-visible:ring-[#123c30] dark:bg-[#FF6B3D] dark:text-[#101214] dark:hover:bg-[#FF835F] dark:focus-visible:border-[#FF6B3D] dark:focus-visible:ring-[#FF6B3D]"
                                 disabled={processing}
                                 data-test="login-button"
                             >
@@ -122,11 +127,11 @@ export default function Login({
                         </div>
 
                         {canRegister && (
-                            <p className="border-t border-[#aab3ae] pt-5 text-sm text-[#53635b] dark:border-[#46544d] dark:text-[#a9b7af]">
+                            <p className="border-t border-[#aab3ae] pt-5 text-sm text-[#53635b] dark:border-[#40474E] dark:text-[#AEB4B9]">
                                 Belum punya akun?{' '}
                                 <TextLink
                                     href={register()}
-                                    className="font-semibold text-[#123c30] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#123c30] dark:text-[#edf2ec] dark:focus-visible:outline-[#f3f1e9]"
+                                    className="font-semibold text-[#123c30] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#123c30] dark:text-[#F4F1E8] dark:focus-visible:outline-[#FF6B3D]"
                                 >
                                     Buat akun toko
                                 </TextLink>
